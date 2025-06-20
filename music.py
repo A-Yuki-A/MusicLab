@@ -7,26 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/12Dhu5AY8Ve8T-o8duZS8xO09g3A384gS
 """
 
-import sys
-import subprocess
 import streamlit as st
-
-# 必要ライブラリのインストール関数
-def install(package):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-# 必要なパッケージを確認し、なければインストール試行
-for pkg in ["streamlit", "numpy", "matplotlib", "soundfile", "librosa"]:
-    try:
-        __import__(pkg)
-    except ModuleNotFoundError:
-        try:
-            install(pkg)
-        except subprocess.CalledProcessError:
-            # インストールに失敗した場合はストリームリット上でエラー表示
-            st.error(f"パッケージ '{pkg}' のインストールに失敗しました。requirements.txt に '{pkg}' を追加して再デプロイしてください。")
-
-# ライブラリのインポート
 import numpy as np
 import matplotlib.pyplot as plt
 import soundfile as sf
@@ -37,31 +18,61 @@ import time
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
 # 音声ファイルアップロード
-uploaded_file = st.file_uploader("音声ファイルをアップロードしてください（wav, flac, mp3）", type=["wav", "flac", "mp3"])
+uploaded_file = st.file_uploader(
+    "音声ファイルをアップロードしてください（wav, flac, mp3）",
+    type=["wav", "flac", "mp3"]
+)
 if uploaded_file:
     # 音声データの読み込み
     try:
         data, sr = sf.read(uploaded_file)
+    except ModuleNotFoundError:
+        st.error(
+            "必要なパッケージがインストールされていません。\n"
+            "requirements.txt に以下を追加して再デプロイしてください:\n"
+            "matplotlib\nsoundfile\nlibrosa\n"
+        )
+        st.stop()
     except Exception as e:
         st.error(f"音声ファイルの読み込みに失敗しました: {e}")
         st.stop()
+
+    # モノラル化
     if data.ndim > 1:
         data = data[:, 0]
     duration = len(data) / sr
     t = np.linspace(0, duration, len(data))
 
     # 標本化周波数と量子化ビット数のスライダー
-    fs = st.slider("標本化周波数 (Hz)", min_value=1000, max_value=sr, value=int(sr/2), step=100)
-    bits = st.slider("量子化ビット数", min_value=1, max_value=16, value=8, step=1)
+    fs = st.slider(
+        "標本化周波数 (Hz)",
+        min_value=1000,
+        max_value=sr,
+        value=int(sr / 2),
+        step=100,
+    )
+    bits = st.slider(
+        "量子化ビット数",
+        min_value=1,
+        max_value=16,
+        value=8,
+        step=1,
+    )
 
     # 再標本化
-    data_resampled = librosa.resample(data.astype(float), orig_sr=sr, target_sr=fs)
-    t_resampled = np.linspace(0, len(data_resampled) / fs, len(data_resampled))
+    data_resampled = librosa.resample(
+        data.astype(float), orig_sr=sr, target_sr=fs
+    )
+    t_resampled = np.linspace(
+        0, len(data_resampled) / fs, len(data_resampled)
+    )
 
     # 元波形と最初の5標本点のプロット
     fig, ax = plt.subplots()
     ax.plot(t, data, alpha=0.5, label="元波形")
-    ax.plot(t_resampled[:5], data_resampled[:5], 'o', color='red', label="標本点 (5個)")
+    ax.plot(
+        t_resampled[:5], data_resampled[:5], 'o', color='red', label="標本点 (5個)"
+    )
     ax.set_xlabel("時間 (秒)")
     ax.set_ylabel("振幅")
     ax.legend()
@@ -69,19 +80,32 @@ if uploaded_file:
 
     # デジタル化プロセス（5サンプル）
     max_val = np.max(np.abs(data_resampled))
-    norm = data_resampled[:5] / max_val if max_val != 0 else data_resampled[:5]
+    norm = (
+        data_resampled[:5] / max_val
+        if max_val != 0
+        else data_resampled[:5]
+    )
     levels = 2 ** bits
-    q = np.round((norm + 1) / 2 * (levels - 1)).astype(int)
+    q = np.round(
+        (norm + 1) / 2 * (levels - 1)
+    ).astype(int)
 
     anim_placeholder = st.empty()
     for i in range(5):
         fig2, ax2 = plt.subplots()
         ax2.plot(t, data, alpha=0.2)
-        ax2.plot([t_resampled[i], t_resampled[i]], [-1, 1], '--', color='gray')
-        ax2.plot(t_resampled[i], data_resampled[i], 'o', color='blue', label=f"サンプル点 {i+1}")
+        ax2.plot(
+            [t_resampled[i], t_resampled[i]], [-1, 1], '--', color='gray'
+        )
+        ax2.plot(
+            t_resampled[i], data_resampled[i], 'o', color='blue',
+            label=f"サンプル点 {i+1}"
+        )
         ax2.set_xlabel("時間 (秒)")
         ax2.set_ylabel("振幅")
-        ax2.set_title(f"ステップ {i+1}: 標本化 → 量子化 → 符号化")
+        ax2.set_title(
+            f"ステップ {i+1}: 標本化 → 量子化 → 符号化"
+        )
         ax2.legend()
         anim_placeholder.pyplot(fig2)
 
