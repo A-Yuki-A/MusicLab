@@ -17,8 +17,8 @@ Original file is located at
 import streamlit as st
 import numpy as np
 import pandas as pd
-import time
 import tempfile
+import time
 
 # モジュールの可用性チェック
 try:
@@ -35,10 +35,18 @@ except ModuleNotFoundError:
 # アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
-# データ取得方法の選択
-options = ["既存ファイル (MP3)"]
+# 利用可能なオプションの構築
+options = []
+if librosa_available:
+    options.append("既存ファイル (MP3)")
 if sd_available:
     options.append("マイク録音")
+
+# どちらも利用できない場合はエラー
+if not options:
+    st.error("音声取得用のモジュールがインストールされていません。requirements.txt に 'sounddevice' または 'librosa' を追加してください。")
+    st.stop()
+
 mode = st.radio(
     "音声データの取得方法を選択してください",
     options
@@ -49,13 +57,9 @@ sr = None
 
 # MP3ファイル読み込みモード
 if mode == "既存ファイル (MP3)":
-    if not librosa_available:
-        st.error("MP3読み込み用のモジュール(librosa)がインストールされていません。requirements.txt に 'librosa' を追加して再デプロイしてください。")
-        st.stop()
     uploaded_file = st.file_uploader("MP3ファイルをアップロードしてください", type=["mp3"])
     if uploaded_file:
         try:
-            # 一時ファイルに保存して読み込む
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             tmp.write(uploaded_file.read())
             tmp.flush()
@@ -66,11 +70,11 @@ if mode == "既存ファイル (MP3)":
 
 # マイク録音モード
 elif mode == "マイク録音":
-    if not sd_available:
-        st.error("マイク録音用のモジュール(sounddevice)がインストールされていません。requirements.txt に 'sounddevice' を追加して再デプロイしてください。")
-        st.stop()
     duration = st.slider("録音時間 (秒)", min_value=1, max_value=10, value=5)
     if st.button("録音開始"):
+        if not sd_available:
+            st.error("マイク録音用のモジュール(sounddevice)がインストールされていません。requirements.txt に 'sounddevice' を追加してください。")
+            st.stop()
         st.info(f"録音中... {duration}秒")
         sr = 44100
         recording = sd.rec(int(duration * sr), samplerate=sr, channels=1, dtype='float32')
