@@ -11,76 +11,84 @@ Original file is located at
 # streamlit
 # numpy
 # pandas
-# sounddevice
 # librosa
 
 import streamlit as st
 import numpy as np
 import pandas as pd
 import time
-import sounddevice as sd
 import librosa
 import tempfile
+
+# sounddevice のインポートを試みる
+try:
+    import sounddevice as sd
+    sd_available = True
+except ModuleNotFoundError:
+    sd_available = False
 
 # アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
 # データ取得方法の選択
+options = ["既存ファイル (MP3)"]
+if sd_available:
+    options.append("マイク録音")
 mode = st.radio(
     "音声データの取得方法を選択してください",
-    ("既存ファイル (MP3)", "マイク録音")
+    options
 )
 
 data = None
 sr = None
 
+# MP3ファイル読み込み
 if mode == "既存ファイル (MP3)":
     uploaded_file = st.file_uploader("MP3ファイルをアップロードしてください", type=["mp3"])
     if uploaded_file:
         try:
-            # 一時ファイルに保存して librosa で読み込み
-            bytes_data = uploaded_file.read()
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-            tmp.write(bytes_data)
+            tmp.write(uploaded_file.read())
             tmp.flush()
             data, sr = librosa.load(tmp.name, sr=None, mono=True)
         except Exception as e:
-            st.error(f"MP3ファイルの読み込みに失敗しました: {e}")
+            st.error(f"MP3読み込みエラー: {e}")
             st.stop()
 
+# マイク録音 (sounddevice が利用可能な場合のみ)
 elif mode == "マイク録音":
+    if not sd_available:
+        st.error("マイク録音用のモジュール(sounddevice)がインストールされていません。requirements.txt に 'sounddevice' を追加してください。")
+        st.stop()
     duration = st.slider("録音時間 (秒)", min_value=1, max_value=10, value=5)
     if st.button("録音開始"):
-        st.info(f"録音中... {duration}秒")
+        st.info(f"録音中: {duration}秒")
         sr = 44100
         recording = sd.rec(int(duration * sr), samplerate=sr, channels=1, dtype='float32')
         sd.wait()
         data = recording.flatten()
-        st.success("録音が完了しました！")
+        st.success("録音完了！")
 
-# データが取得できたら処理開始
+# データ処理
 if data is not None and sr is not None:
-    # 時間軸
     t = np.arange(len(data)) / sr
 
-    # 標本化周波数と量子化ビット数のスライダー
-    fs = st.slider(
-        "標本化周波数 (Hz)", min_value=1000, max_value=sr, value=int(sr/2), step=100
-    )
+    # パラメータ調整
+    fs = st.slider("標本化周波数 (Hz)", min_value=1000, max_value=sr, value=int(sr/2), step=100)
     bits = st.slider("量子化ビット数", min_value=1, max_value=16, value=8)
 
     # 元波形表示
     df_orig = pd.DataFrame({"振幅": data}, index=t)
     st.line_chart(df_orig)
 
-    # ダウンサンプリング（単純間引き）
+    # ダウンサンプリング
     factor = max(int(sr / fs), 1)
     data_resampled = data[::factor]
     t_resampled = t[::factor]
     df_res = pd.DataFrame({"振幅 (標本点)": data_resampled}, index=t_resampled)
     st.line_chart(df_res)
 
-    # デジタル化プロセス (最初の5標本点)
+    # デジタル化プロセス (最初の5点)
     max_val = np.max(np.abs(data_resampled))
     norm = data_resampled[:5] / max_val if max_val != 0 else data_resampled[:5]
     levels = 2 ** bits
@@ -96,4 +104,4 @@ if data is not None and sr is not None:
         st.write(f"符号化 (2進数): {binary}")
         time.sleep(1)
 
-    st.success("デジタル化プロセスのアニメーションが完了しました！")
+    st.success("デジタル化プロセスのアニメーション完了！")
