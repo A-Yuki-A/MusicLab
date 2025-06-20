@@ -17,7 +17,11 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import time
-import librosa
+try:
+    import librosa
+    librosa_available = True
+except ModuleNotFoundError:
+    librosa_available = False
 import tempfile
 
 # sounddevice のインポートを試みる
