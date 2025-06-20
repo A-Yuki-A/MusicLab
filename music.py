@@ -9,10 +9,32 @@ Original file is located at
 
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-import soundfile as sf
-import librosa
 import time
+
+# 必要パッケージのインポート
+missing_pkgs = []
+try:
+    import matplotlib.pyplot as plt
+except ModuleNotFoundError:
+    missing_pkgs.append('matplotlib')
+try:
+    import soundfile as sf
+except ModuleNotFoundError:
+    missing_pkgs.append('soundfile')
+try:
+    import librosa
+except ModuleNotFoundError:
+    missing_pkgs.append('librosa')
+
+# インストール不足のパッケージがあれば案内して停止
+if missing_pkgs:
+    pkg_list = '\n'.join(missing_pkgs)
+    st.error(
+        f"必要なパッケージがインストールされていません。\n"
+        f"requirements.txt に以下を追加して再デプロイしてください:\n"
+        f"{pkg_list}"
+    )
+    st.stop()
 
 # アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
@@ -26,13 +48,6 @@ if uploaded_file:
     # 音声データの読み込み
     try:
         data, sr = sf.read(uploaded_file)
-    except ModuleNotFoundError:
-        st.error(
-            "必要なパッケージがインストールされていません。\n"
-            "requirements.txt に以下を追加して再デプロイしてください:\n"
-            "matplotlib\nsoundfile\nlibrosa\n"
-        )
-        st.stop()
     except Exception as e:
         st.error(f"音声ファイルの読み込みに失敗しました: {e}")
         st.stop()
