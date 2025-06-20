@@ -19,37 +19,16 @@ import numpy as np
 import pandas as pd
 import tempfile
 import time
-
-# モジュールの可用性チェック
-try:
-    import sounddevice as sd
-    sd_available = True
-except ModuleNotFoundError:
-    sd_available = False
-try:
-    import librosa
-    librosa_available = True
-except ModuleNotFoundError:
-    librosa_available = False
+import sounddevice as sd
+import librosa
 
 # アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
-# 利用可能なオプションの構築
-options = []
-if librosa_available:
-    options.append("既存ファイル (MP3)")
-if sd_available:
-    options.append("マイク録音")
-
-# どちらも利用できない場合はエラー
-if not options:
-    st.error("音声取得用のモジュールがインストールされていません。requirements.txt に 'sounddevice' または 'librosa' を追加してください。")
-    st.stop()
-
+# データ取得方法の選択
 mode = st.radio(
     "音声データの取得方法を選択してください",
-    options
+    ("既存ファイル (MP3)", "マイク録音")
 )
 
 data = None
@@ -64,6 +43,7 @@ if mode == "既存ファイル (MP3)":
             tmp.write(uploaded_file.read())
             tmp.flush()
             data, sr = librosa.load(tmp.name, sr=None, mono=True)
+            st.success(f"MP3ファイルを読み込みました (サンプリングレート: {sr} Hz)")
         except Exception as e:
             st.error(f"MP3読み込みエラー: {e}")
             st.stop()
@@ -72,9 +52,6 @@ if mode == "既存ファイル (MP3)":
 elif mode == "マイク録音":
     duration = st.slider("録音時間 (秒)", min_value=1, max_value=10, value=5)
     if st.button("録音開始"):
-        if not sd_available:
-            st.error("マイク録音用のモジュール(sounddevice)がインストールされていません。requirements.txt に 'sounddevice' を追加してください。")
-            st.stop()
         st.info(f"録音中... {duration}秒")
         sr = 44100
         recording = sd.rec(int(duration * sr), samplerate=sr, channels=1, dtype='float32')
