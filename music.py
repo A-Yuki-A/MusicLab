@@ -11,8 +11,9 @@ Original file is located at
 # streamlit
 # numpy
 # pandas
-# librosa      # MP3 ファイル読み込み用
-# sounddevice  # マイク録音用
+# pydub       # MP3ファイル読み込み用
+# sounddevice # マイク録音用
+# scipy       # audioデータ処理用
 
 import streamlit as st
 import numpy as np
@@ -32,22 +33,37 @@ mode = st.radio(
 data = None
 sr = None
 
-# MP3 ファイル読み込みモード
+# MP3ファイル読み込みモード
 if mode == "MP3ファイル読み込み":
     uploaded_file = st.file_uploader("MP3 ファイルをアップロード", type=["mp3"])
     if uploaded_file:
+        # まず pydub を試す
         try:
-            import librosa
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-            tmp.write(uploaded_file.read())
-            tmp.flush()
-            data, sr = librosa.load(tmp.name, sr=None, mono=True)
-            st.success(f"MP3 読み込み成功 (fs={sr} Hz)")
+            from pydub import AudioSegment
+            audio = AudioSegment.from_file(uploaded_file, format="mp3")
+            sr = audio.frame_rate
+            samples = np.array(audio.get_array_of_samples(), dtype=np.float32)
+            if audio.channels > 1:
+                samples = samples.reshape(-1, audio.channels)[:, 0]
+            data = samples
+            st.success(f"MP3 読み込み成功 (fs={sr} Hz via pydub)")
         except ModuleNotFoundError:
-            st.error("librosa が見つかりません。requirements.txt に 'librosa' を追加して再デプロイしてください。")
-            st.stop()
+            # pydub がない場合は librosa にフォールバック
+            try:
+                import librosa
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+                tmp.write(uploaded_file.read())
+                tmp.flush()
+                data, sr = librosa.load(tmp.name, sr=None, mono=True)
+                st.success(f"MP3 読み込み成功 (fs={sr} Hz via librosa)")
+            except ModuleNotFoundError:
+                st.error("MP3読み込み用モジュールが見つかりません。requirements.txt に 'pydub' または 'librosa' を追加して再デプロイしてください。")
+                st.stop()
+            except Exception as e:
+                st.error(f"librosa MP3読み込みエラー: {e}")
+                st.stop()
         except Exception as e:
-            st.error(f"MP3 読み込みエラー: {e}")
+            st.error(f"pydub MP3読み込みエラー: {e}")
             st.stop()
 
 # マイク録音モード
@@ -55,7 +71,7 @@ elif mode == "マイク録音":
     try:
         import sounddevice as sd
     except ModuleNotFoundError:
-        st.error("sounddevice が見つかりません。requirements.txt に 'sounddevice' を追加して再デプロイしてください。")
+        st.error("マイク録音用モジュール(sounddevice)が見つかりません。requirements.txt に 'sounddevice' を追加して再デプロイしてください。")
         st.stop()
     duration = st.slider("録音時間 (秒)", min_value=1, max_value=10, value=5)
     if st.button("録音開始"):
@@ -68,10 +84,9 @@ elif mode == "マイク録音":
 
 # データ処理
 if data is not None and sr is not None:
-    # 時間軸
     t = np.arange(len(data)) / sr
 
-    # パラメータ設定
+    # 標本化周波数と量子化ビット数
     fs = st.slider("標本化周波数 (Hz)", min_value=1000, max_value=sr, value=int(sr/2), step=100)
     bits = st.slider("量子化ビット数", min_value=1, max_value=16, value=8)
 
@@ -86,7 +101,7 @@ if data is not None and sr is not None:
     df_res = pd.DataFrame({"振幅 (標本点)": data_resampled}, index=t_resampled)
     st.line_chart(df_res)
 
-    # デジタル化プロセス (最初の5 標本点)
+    # デジタル化プロセス (最初の5標本点)
     max_val = np.max(np.abs(data_resampled))
     norm = data_resampled[:5] / max_val if max_val != 0 else data_resampled[:5]
     levels = 2 ** bits
