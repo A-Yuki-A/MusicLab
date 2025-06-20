@@ -11,49 +11,57 @@ Original file is located at
 # streamlit
 # numpy
 # pandas
+# pydub
+# sounddevice
+# scipy
 
 import streamlit as st
 import numpy as np
 import pandas as pd
-import wave
 import io
+import wave
 import time
+from pydub import AudioSegment
+import sounddevice as sd
+from scipy.io import wavfile
 
 # アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
-# 音声ファイルアップロード（WAVのみ）
-uploaded_file = st.file_uploader(
-    "WAV形式の音声ファイルをアップロードしてください", type=["wav"]
-)
-if uploaded_file:
-    try:
-        # メモリ上のバイトデータを読み込む
-        raw = uploaded_file.read()
-        wf = wave.open(io.BytesIO(raw), "rb")
-        sr = wf.getframerate()
-        n_frames = wf.getnframes()
-        audio_bytes = wf.readframes(n_frames)
-    except Exception as e:
-        st.error(f"WAVファイルの読み込みに失敗しました: {e}")
-        st.stop()
+# データ入力方法の選択
+mode = st.radio("音声データの取得方法を選択してください", ("既存ファイル (MP3)", "マイク録音"))
 
-    # 波形データ取得
-    sampwidth = wf.getsampwidth()
-    dtype = None
-    if sampwidth == 1:
-        dtype = np.uint8
-    elif sampwidth == 2:
-        dtype = np.int16
-    elif sampwidth == 4:
-        dtype = np.int32
-    data = np.frombuffer(audio_bytes, dtype=dtype)
-    # モノラル化 (ステレオの場合は左チャンネル)
-    n_channels = wf.getnchannels()
-    if n_channels > 1:
-        data = data.reshape(-1, n_channels)[:, 0]
+data = None
+sr = None
 
-    # 時間軸を算出
+if mode == "既存ファイル (MP3)":
+    uploaded_file = st.file_uploader("MP3ファイルをアップロードしてください", type=["mp3"])
+    if uploaded_file:
+        try:
+            audio = AudioSegment.from_file(uploaded_file, format="mp3")
+            sr = audio.frame_rate
+            samples = np.array(audio.get_array_of_samples())
+            # ステレオの場合左チャンネル
+            if audio.channels > 1:
+                samples = samples.reshape(-1, audio.channels)[:, 0]
+            data = samples.astype(np.float32)
+        except Exception as e:
+            st.error(f"MP3ファイルの読み込みに失敗しました: {e}")
+            st.stop()
+
+elif mode == "マイク録音":
+    duration = st.slider("録音時間 (秒)", min_value=1, max_value=10, value=5)
+    if st.button("録音開始"):
+        st.info(f"録音中... {duration}秒")
+        sr = 44100
+        recording = sd.rec(int(duration * sr), samplerate=sr, channels=1, dtype='float32')
+        sd.wait()
+        data = recording.flatten()
+        st.success("録音が完了しました！")
+
+# データが取得できたら処理開始
+if data is not None:
+    # 時間軸
     t = np.arange(len(data)) / sr
 
     # 標本化周波数と量子化ビット数のスライダー
@@ -62,7 +70,7 @@ if uploaded_file:
     )
     bits = st.slider("量子化ビット数", min_value=1, max_value=16, value=8)
 
-    # データフレーム作成して表示 (元波形)
+    # 元波形表示
     df_orig = pd.DataFrame({"振幅": data}, index=t)
     st.line_chart(df_orig)
 
@@ -79,10 +87,11 @@ if uploaded_file:
     levels = 2 ** bits
     q = np.round((norm + 1) / 2 * (levels - 1)).astype(int)
 
+    anim_placeholder = st.empty()
     for i in range(5):
         st.write(f"--- ステップ {i+1} ---")
         st.write(f"時間: {t_resampled[i]:.4f} 秒")
-        st.write(f"量子化前の値: {data_resampled[i]}")
+        st.write(f"量子化前の値: {data_resampled[i]:.4f}")
         st.write(f"正規化値: {norm[i]:.4f}")
         st.write(f"量子化レベル: {q[i]} / {levels - 1}")
         binary = format(int(q[i]), f'0{bits}b')
