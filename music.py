@@ -21,7 +21,11 @@ import pandas as pd
 import io
 import wave
 import time
-from pydub import AudioSegment
+try:
+    from pydub import AudioSegment
+except ModuleNotFoundError:
+    st.error("必要なパッケージがインストールされていません。requirements.txt に 'pydub' を追加して再デプロイしてください。")
+    st.stop()
 import sounddevice as sd
 from scipy.io import wavfile
 
