@@ -7,6 +7,13 @@ Original file is located at
     https://colab.research.google.com/drive/12Dhu5AY8Ve8T-o8duZS8xO09g3A384gS
 """
 
+# requirements.txt に以下を記載して再デプロイしてください:
+# streamlit
+# numpy
+# matplotlib
+# soundfile
+# librosa
+
 import streamlit as st
 import numpy as np
 import time
@@ -28,10 +35,10 @@ except ModuleNotFoundError:
 
 # インストール不足のパッケージがあれば案内して停止
 if missing_pkgs:
-    pkg_list = '\n'.join(missing_pkgs)
+    pkg_list = ' '.join(missing_pkgs)
     st.error(
-        f"必要なパッケージがインストールされていません。\n"
-        f"requirements.txt に以下を追加して再デプロイしてください:\n"
+        "必要なパッケージがインストールされていません。\n"
+        "requirements.txt に以下を追記して再デプロイしてください:\n"
         f"{pkg_list}"
     )
     st.stop()
