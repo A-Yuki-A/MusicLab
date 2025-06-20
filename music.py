@@ -9,19 +9,24 @@ Original file is located at
 
 import sys
 import subprocess
+import streamlit as st
 
 # 必要ライブラリのインストール関数
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
-# 必要なパッケージを確認し、なければインストール
+# 必要なパッケージを確認し、なければインストール試行
 for pkg in ["streamlit", "numpy", "matplotlib", "soundfile", "librosa"]:
     try:
         __import__(pkg)
     except ModuleNotFoundError:
-        install(pkg)
+        try:
+            install(pkg)
+        except subprocess.CalledProcessError:
+            # インストールに失敗した場合はストリームリット上でエラー表示
+            st.error(f"パッケージ '{pkg}' のインストールに失敗しました。requirements.txt に '{pkg}' を追加して再デプロイしてください。")
 
-import streamlit as st
+# ライブラリのインポート
 import numpy as np
 import matplotlib.pyplot as plt
 import soundfile as sf
@@ -35,7 +40,11 @@ st.title("音声波形表示とデジタル化プロセスのアニメーショ�
 uploaded_file = st.file_uploader("音声ファイルをアップロードしてください（wav, flac, mp3）", type=["wav", "flac", "mp3"])
 if uploaded_file:
     # 音声データの読み込み
-    data, sr = sf.read(uploaded_file)
+    try:
+        data, sr = sf.read(uploaded_file)
+    except Exception as e:
+        st.error(f"音声ファイルの読み込みに失敗しました: {e}")
+        st.stop()
     if data.ndim > 1:
         data = data[:, 0]
     duration = len(data) / sr
@@ -60,7 +69,7 @@ if uploaded_file:
 
     # デジタル化プロセス（5サンプル）
     max_val = np.max(np.abs(data_resampled))
-    norm = data_resampled[:5] / max_val
+    norm = data_resampled[:5] / max_val if max_val != 0 else data_resampled[:5]
     levels = 2 ** bits
     q = np.round((norm + 1) / 2 * (levels - 1)).astype(int)
 
