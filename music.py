@@ -11,29 +11,25 @@ Original file is located at
 # streamlit
 # numpy
 # pandas
-# pydub
 # sounddevice
-# scipy
+# librosa
 
 import streamlit as st
 import numpy as np
 import pandas as pd
-import io
-import wave
 import time
-try:
-    from pydub import AudioSegment
-except ModuleNotFoundError:
-    st.error("必要なパッケージがインストールされていません。requirements.txt に 'pydub' を追加して再デプロイしてください。")
-    st.stop()
 import sounddevice as sd
-from scipy.io import wavfile
+import librosa
+import tempfile
 
 # アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
-# データ入力方法の選択
-mode = st.radio("音声データの取得方法を選択してください", ("既存ファイル (MP3)", "マイク録音"))
+# データ取得方法の選択
+mode = st.radio(
+    "音声データの取得方法を選択してください",
+    ("既存ファイル (MP3)", "マイク録音")
+)
 
 data = None
 sr = None
@@ -42,13 +38,12 @@ if mode == "既存ファイル (MP3)":
     uploaded_file = st.file_uploader("MP3ファイルをアップロードしてください", type=["mp3"])
     if uploaded_file:
         try:
-            audio = AudioSegment.from_file(uploaded_file, format="mp3")
-            sr = audio.frame_rate
-            samples = np.array(audio.get_array_of_samples())
-            # ステレオの場合左チャンネル
-            if audio.channels > 1:
-                samples = samples.reshape(-1, audio.channels)[:, 0]
-            data = samples.astype(np.float32)
+            # 一時ファイルに保存して librosa で読み込み
+            bytes_data = uploaded_file.read()
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            tmp.write(bytes_data)
+            tmp.flush()
+            data, sr = librosa.load(tmp.name, sr=None, mono=True)
         except Exception as e:
             st.error(f"MP3ファイルの読み込みに失敗しました: {e}")
             st.stop()
@@ -64,7 +59,7 @@ elif mode == "マイク録音":
         st.success("録音が完了しました！")
 
 # データが取得できたら処理開始
-if data is not None:
+if data is not None and sr is not None:
     # 時間軸
     t = np.arange(len(data)) / sr
 
@@ -91,7 +86,6 @@ if data is not None:
     levels = 2 ** bits
     q = np.round((norm + 1) / 2 * (levels - 1)).astype(int)
 
-    anim_placeholder = st.empty()
     for i in range(5):
         st.write(f"--- ステップ {i+1} ---")
         st.write(f"時間: {t_resampled[i]:.4f} 秒")
