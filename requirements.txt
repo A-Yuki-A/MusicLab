@@ -1,0 +1,4 @@
+librosa      # MP3読み込み用
+sounddevice  # マイク録音用
+pydub        # （もし pydub での読み込みも使いたい場合）
+scipy        # pydub の依存
