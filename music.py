@@ -10,134 +10,83 @@ Original file is located at
 # requirements.txt に以下を記載して再デプロイしてください:
 # streamlit
 # numpy
-# matplotlib
-# soundfile
-# librosa
+# pandas
 
 import streamlit as st
 import numpy as np
+import pandas as pd
+import wave
+import io
 import time
-
-# 必要パッケージのインポート
-missing_pkgs = []
-try:
-    import matplotlib.pyplot as plt
-except ModuleNotFoundError:
-    missing_pkgs.append('matplotlib')
-try:
-    import soundfile as sf
-except ModuleNotFoundError:
-    missing_pkgs.append('soundfile')
-try:
-    import librosa
-except ModuleNotFoundError:
-    missing_pkgs.append('librosa')
-
-# インストール不足のパッケージがあれば案内して停止
-if missing_pkgs:
-    pkg_list = ' '.join(missing_pkgs)
-    st.error(
-        "必要なパッケージがインストールされていません。\n"
-        "requirements.txt に以下を追記して再デプロイしてください:\n"
-        f"{pkg_list}"
-    )
-    st.stop()
 
 # アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
-# 音声ファイルアップロード
+# 音声ファイルアップロード（WAVのみ）
 uploaded_file = st.file_uploader(
-    "音声ファイルをアップロードしてください（wav, flac, mp3）",
-    type=["wav", "flac", "mp3"]
+    "WAV形式の音声ファイルをアップロードしてください", type=["wav"]
 )
 if uploaded_file:
-    # 音声データの読み込み
     try:
-        data, sr = sf.read(uploaded_file)
+        # メモリ上のバイトデータを読み込む
+        raw = uploaded_file.read()
+        wf = wave.open(io.BytesIO(raw), "rb")
+        sr = wf.getframerate()
+        n_frames = wf.getnframes()
+        audio_bytes = wf.readframes(n_frames)
     except Exception as e:
-        st.error(f"音声ファイルの読み込みに失敗しました: {e}")
+        st.error(f"WAVファイルの読み込みに失敗しました: {e}")
         st.stop()
 
-    # モノラル化
-    if data.ndim > 1:
-        data = data[:, 0]
-    duration = len(data) / sr
-    t = np.linspace(0, duration, len(data))
+    # 波形データ取得
+    sampwidth = wf.getsampwidth()
+    dtype = None
+    if sampwidth == 1:
+        dtype = np.uint8
+    elif sampwidth == 2:
+        dtype = np.int16
+    elif sampwidth == 4:
+        dtype = np.int32
+    data = np.frombuffer(audio_bytes, dtype=dtype)
+    # モノラル化 (ステレオの場合は左チャンネル)
+    n_channels = wf.getnchannels()
+    if n_channels > 1:
+        data = data.reshape(-1, n_channels)[:, 0]
+
+    # 時間軸を算出
+    t = np.arange(len(data)) / sr
 
     # 標本化周波数と量子化ビット数のスライダー
     fs = st.slider(
-        "標本化周波数 (Hz)",
-        min_value=1000,
-        max_value=sr,
-        value=int(sr / 2),
-        step=100,
+        "標本化周波数 (Hz)", min_value=1000, max_value=sr, value=int(sr/2), step=100
     )
-    bits = st.slider(
-        "量子化ビット数",
-        min_value=1,
-        max_value=16,
-        value=8,
-        step=1,
-    )
+    bits = st.slider("量子化ビット数", min_value=1, max_value=16, value=8)
 
-    # 再標本化
-    data_resampled = librosa.resample(
-        data.astype(float), orig_sr=sr, target_sr=fs
-    )
-    t_resampled = np.linspace(
-        0, len(data_resampled) / fs, len(data_resampled)
-    )
+    # データフレーム作成して表示 (元波形)
+    df_orig = pd.DataFrame({"振幅": data}, index=t)
+    st.line_chart(df_orig)
 
-    # 元波形と最初の5標本点のプロット
-    fig, ax = plt.subplots()
-    ax.plot(t, data, alpha=0.5, label="元波形")
-    ax.plot(
-        t_resampled[:5], data_resampled[:5], 'o', color='red', label="標本点 (5個)"
-    )
-    ax.set_xlabel("時間 (秒)")
-    ax.set_ylabel("振幅")
-    ax.legend()
-    st.pyplot(fig)
+    # ダウンサンプリング（単純間引き）
+    factor = max(int(sr / fs), 1)
+    data_resampled = data[::factor]
+    t_resampled = t[::factor]
+    df_res = pd.DataFrame({"振幅 (標本点)": data_resampled}, index=t_resampled)
+    st.line_chart(df_res)
 
-    # デジタル化プロセス（5サンプル）
+    # デジタル化プロセス (最初の5標本点)
     max_val = np.max(np.abs(data_resampled))
-    norm = (
-        data_resampled[:5] / max_val
-        if max_val != 0
-        else data_resampled[:5]
-    )
+    norm = data_resampled[:5] / max_val if max_val != 0 else data_resampled[:5]
     levels = 2 ** bits
-    q = np.round(
-        (norm + 1) / 2 * (levels - 1)
-    ).astype(int)
+    q = np.round((norm + 1) / 2 * (levels - 1)).astype(int)
 
-    anim_placeholder = st.empty()
     for i in range(5):
-        fig2, ax2 = plt.subplots()
-        ax2.plot(t, data, alpha=0.2)
-        ax2.plot(
-            [t_resampled[i], t_resampled[i]], [-1, 1], '--', color='gray'
-        )
-        ax2.plot(
-            t_resampled[i], data_resampled[i], 'o', color='blue',
-            label=f"サンプル点 {i+1}"
-        )
-        ax2.set_xlabel("時間 (秒)")
-        ax2.set_ylabel("振幅")
-        ax2.set_title(
-            f"ステップ {i+1}: 標本化 → 量子化 → 符号化"
-        )
-        ax2.legend()
-        anim_placeholder.pyplot(fig2)
-
-        # ステップ情報表示
-        st.write(f"**量子化前の値**: {data_resampled[i]:.3f}")
-        st.write(f"**正規化値**: {norm[i]:.3f}")
-        st.write(f"**量子化レベル**: {q[i]} / {levels - 1}")
-        binary = format(q[i], f'0{bits}b')
-        st.write(f"**符号化 (2進数)**: {binary}")
-
+        st.write(f"--- ステップ {i+1} ---")
+        st.write(f"時間: {t_resampled[i]:.4f} 秒")
+        st.write(f"量子化前の値: {data_resampled[i]}")
+        st.write(f"正規化値: {norm[i]:.4f}")
+        st.write(f"量子化レベル: {q[i]} / {levels - 1}")
+        binary = format(int(q[i]), f'0{bits}b')
+        st.write(f"符号化 (2進数): {binary}")
         time.sleep(1)
 
     st.success("デジタル化プロセスのアニメーションが完了しました！")
