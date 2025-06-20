@@ -7,7 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/12Dhu5AY8Ve8T-o8duZS8xO09g3A384gS
 """
 
-# requirements.txt を更新し、以下を追加して再デプロイしてください:
+# requirements.txt を更新し、必要に応じて再デプロイしてください:
 # streamlit
 # numpy
 # pandas
@@ -20,76 +20,57 @@ import pandas as pd
 import tempfile
 import time
 
-# モジュール読み込み
-try:
-    import librosa
-    librosa_available = True
-except ModuleNotFoundError:
-    librosa_available = False
-
-try:
-    import sounddevice as sd
-    sd_available = True
-except ModuleNotFoundError:
-    sd_available = False
-
-# 必要モジュールの確認
-if not librosa_available and not sd_available:
-    st.error(
-        "MP3読み込み(librosa)とマイク録音(sounddevice)両方のモジュールが不足しています。\n"
-        "requirements.txt に 'librosa' または 'sounddevice' を追加して再デプロイしてください。"
-    )
-    st.stop()
-
 # アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
-# 入力モード
-modes = []
-if librosa_available:
-    modes.append("MP3ファイル読み込み")
-if sd_available:
-    modes.append("マイク録音")
-mode = st.radio("音声データの取得方法を選択してください", modes)
+# 入力モードを常に表示
+mode = st.radio(
+    "音声データの取得方法を選択してください",
+    ("MP3ファイル読み込み", "マイク録音")
+)
 
 data = None
 sr = None
 
-# MP3ファイル読み込み
+# MP3ファイル読み込みモード
 if mode == "MP3ファイル読み込み":
-    if not librosa_available:
-        st.error("MP3読み込み用モジュール(librosa)がインストールされていません。requirements.txt を更新してください。")
-        st.stop()
     uploaded_file = st.file_uploader("MP3ファイルをアップロードしてください", type=["mp3"])
     if uploaded_file:
         try:
+            import librosa
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             tmp.write(uploaded_file.read())
             tmp.flush()
             data, sr = librosa.load(tmp.name, sr=None, mono=True)
             st.success(f"MP3読み込み成功 (サンプリングレート: {sr} Hz)")
+        except ModuleNotFoundError:
+            st.error("MP3読み込み用モジュール(librosa)がインストールされていません。requirements.txt に 'librosa' を追加して再デプロイしてください。")
         except Exception as e:
-            st.error(f"MP3読み込みに失敗しました: {e}")
+            st.error(f"MP3読み込みエラー: {e}")
 
-# マイク録音
+# マイク録音モード
 elif mode == "マイク録音":
+    uploaded = False
+    try:
+        import sounddevice as sd
+        sd_available = True
+    except ModuleNotFoundError:
+        sd_available = False
     if not sd_available:
-        st.error("マイク録音用モジュール(sounddevice)がインストールされていません。requirements.txt を更新してください。")
-        st.stop()
-    duration = st.slider("録音時間 (秒)", min_value=1, max_value=10, value=5)
-    if st.button("録音開始"):
-        st.info(f"録音中... {duration}秒")
-        sr = 44100
-        recording = sd.rec(int(duration * sr), samplerate=sr, channels=1, dtype='float32')
-        sd.wait()
-        data = recording.flatten()
-        st.success("録音が完了しました！")
+        st.error("マイク録音用モジュール(sounddevice)がインストールされていません。requirements.txt に 'sounddevice' を追加して再デプロイしてください。")
+    else:
+        duration = st.slider("録音時間 (秒)", min_value=1, max_value=10, value=5)
+        if st.button("録音開始"):
+            st.info(f"録音中... {duration}秒")
+            sr = 44100
+            recording = sd.rec(int(duration * sr), samplerate=sr, channels=1, dtype='float32')
+            sd.wait()
+            data = recording.flatten()
+            st.success("録音が完了しました！")
 
 # データ処理
 if data is not None and sr is not None:
-    # 時間軸
     t = np.arange(len(data)) / sr
-
     # パラメータ
     fs = st.slider("標本化周波数 (Hz)", min_value=1000, max_value=sr, value=int(sr/2), step=100)
     bits = st.slider("量子化ビット数", min_value=1, max_value=16, value=8)
