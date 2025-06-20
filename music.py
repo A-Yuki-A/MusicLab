@@ -11,31 +11,60 @@ Original file is located at
 # streamlit
 # numpy
 # pandas
-# sounddevice
-# librosa
+# librosa  # MP3読み込み用
+# sounddevice  # 録音用
 
 import streamlit as st
 import numpy as np
 import pandas as pd
 import tempfile
 import time
-import sounddevice as sd
-import librosa
+
+# モジュールの可用性チェック
+try:
+    import librosa
+    librosa_available = True
+except ModuleNotFoundError:
+    librosa_available = False
+
+try:
+    import sounddevice as sd
+    sd_available = True
+except ModuleNotFoundError:
+    sd_available = False
 
 # アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
-# データ取得方法の選択
+# 利用可能なオプションを用意
+options = []
+if librosa_available:
+    options.append("既存ファイル (MP3)")
+if sd_available:
+    options.append("マイク録音")
+
+# どちらも利用不可なら案内して終了
+if not options:
+    st.error(
+        "音声取得用のモジュールがインストールされていません。\n"
+        "requirements.txt に 'librosa' または 'sounddevice' を追加して再デプロイしてください。"
+    )
+    st.stop()
+
+# データ取得方法選択
 mode = st.radio(
     "音声データの取得方法を選択してください",
-    ("既存ファイル (MP3)", "マイク録音")
+    options
 )
 
 data = None
 sr = None
 
-# MP3ファイル読み込みモード
+# MP3ファイル読み込み
 if mode == "既存ファイル (MP3)":
+    if not librosa_available:
+        st.error("MP3読み込み用のモジュール(librosa)がインストールされていません。requirements.txt を更新してください。")
+        st.stop()
     uploaded_file = st.file_uploader("MP3ファイルをアップロードしてください", type=["mp3"])
     if uploaded_file:
         try:
@@ -43,29 +72,32 @@ if mode == "既存ファイル (MP3)":
             tmp.write(uploaded_file.read())
             tmp.flush()
             data, sr = librosa.load(tmp.name, sr=None, mono=True)
-            st.success(f"MP3ファイルを読み込みました (サンプリングレート: {sr} Hz)")
+            st.success(f"MP3読み込み成功 (サンプリングレート: {sr} Hz)")
         except Exception as e:
             st.error(f"MP3読み込みエラー: {e}")
             st.stop()
 
-# マイク録音モード
+# マイク録音
 elif mode == "マイク録音":
-    duration = st.slider("録音時間 (秒)", min_value=1, max_value=10, value=5)
+    if not sd_available:
+        st.error("マイク録音用のモジュール(sounddevice)がインストールされていません。requirements.txt を更新してください。")
+        st.stop()
+    duration = st.slider("録音時間 (秒)", 1, 10, 5)
     if st.button("録音開始"):
         st.info(f"録音中... {duration}秒")
         sr = 44100
         recording = sd.rec(int(duration * sr), samplerate=sr, channels=1, dtype='float32')
         sd.wait()
         data = recording.flatten()
-        st.success("録音が完了しました！")
+        st.success("録音完了！")
 
-# データ処理開始
+# データ処理
 if data is not None and sr is not None:
     t = np.arange(len(data)) / sr
 
-    # パラメータ設定
-    fs = st.slider("標本化周波数 (Hz)", min_value=1000, max_value=sr, value=int(sr/2), step=100)
-    bits = st.slider("量子化ビット数", min_value=1, max_value=16, value=8)
+    # パラメータ調整
+    fs = st.slider("標本化周波数 (Hz)", 1000, sr, int(sr/2), 100)
+    bits = st.slider("量子化ビット数", 1, 16, 8)
 
     # 元波形表示
     df_orig = pd.DataFrame({"振幅": data}, index=t)
@@ -94,4 +126,4 @@ if data is not None and sr is not None:
         st.write(f"符号化 (2進数): {binary}")
         time.sleep(1)
 
-    st.success("デジタル化プロセスのアニメーション完了！")
+    st.success("デジタル化プロセス完了！")
