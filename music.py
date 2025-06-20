@@ -7,6 +7,20 @@ Original file is located at
     https://colab.research.google.com/drive/12Dhu5AY8Ve8T-o8duZS8xO09g3A384gS
 """
 
+import sys
+import subprocess
+
+# 必要ライブラリのインストール関数
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+# 必要なパッケージを確認し、なければインストール
+for pkg in ["streamlit", "numpy", "matplotlib", "soundfile", "librosa"]:
+    try:
+        __import__(pkg)
+    except ModuleNotFoundError:
+        install(pkg)
+
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,21 +28,20 @@ import soundfile as sf
 import librosa
 import time
 
-# タイトル
+# アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
-# 音声ファイルのアップロード
+# 音声ファイルアップロード
 uploaded_file = st.file_uploader("音声ファイルをアップロードしてください（wav, flac, mp3）", type=["wav", "flac", "mp3"])
 if uploaded_file:
     # 音声データの読み込み
     data, sr = sf.read(uploaded_file)
-    # ステレオの場合は左チャンネルを使用
     if data.ndim > 1:
         data = data[:, 0]
     duration = len(data) / sr
     t = np.linspace(0, duration, len(data))
 
-    # ユーザー操作スライダー
+    # 標本化周波数と量子化ビット数のスライダー
     fs = st.slider("標本化周波数 (Hz)", min_value=1000, max_value=sr, value=int(sr/2), step=100)
     bits = st.slider("量子化ビット数", min_value=1, max_value=16, value=8, step=1)
 
@@ -36,7 +49,7 @@ if uploaded_file:
     data_resampled = librosa.resample(data.astype(float), orig_sr=sr, target_sr=fs)
     t_resampled = np.linspace(0, len(data_resampled) / fs, len(data_resampled))
 
-    # 元波形と最初の5点を表示
+    # 元波形と最初の5標本点のプロット
     fig, ax = plt.subplots()
     ax.plot(t, data, alpha=0.5, label="元波形")
     ax.plot(t_resampled[:5], data_resampled[:5], 'o', color='red', label="標本点 (5個)")
@@ -45,16 +58,14 @@ if uploaded_file:
     ax.legend()
     st.pyplot(fig)
 
-    # デジタル化プロセス（最初の5サンプル）
+    # デジタル化プロセス（5サンプル）
     max_val = np.max(np.abs(data_resampled))
     norm = data_resampled[:5] / max_val
     levels = 2 ** bits
     q = np.round((norm + 1) / 2 * (levels - 1)).astype(int)
 
-    # アニメーション表示用プレースホルダー
     anim_placeholder = st.empty()
     for i in range(5):
-        # サンプル点を強調表示
         fig2, ax2 = plt.subplots()
         ax2.plot(t, data, alpha=0.2)
         ax2.plot([t_resampled[i], t_resampled[i]], [-1, 1], '--', color='gray')
@@ -65,7 +76,7 @@ if uploaded_file:
         ax2.legend()
         anim_placeholder.pyplot(fig2)
 
-        # テキストで各ステップの値を表示
+        # ステップ情報表示
         st.write(f"**量子化前の値**: {data_resampled[i]:.3f}")
         st.write(f"**正規化値**: {norm[i]:.3f}")
         st.write(f"**量子化レベル**: {q[i]} / {levels - 1}")
