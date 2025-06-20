@@ -7,7 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/12Dhu5AY8Ve8T-o8duZS8xO09g3A384gS
 """
 
-# requirements.txt に以下を記載して再デプロイしてください:
+# requirements.txt を更新し、以下を追加して再デプロイしてください:
 # streamlit
 # numpy
 # pandas
@@ -19,103 +19,106 @@ import numpy as np
 import pandas as pd
 import tempfile
 import time
-import wave
+
+# モジュール読み込み
+try:
+    import librosa
+    librosa_available = True
+except ModuleNotFoundError:
+    librosa_available = False
+
+try:
+    import sounddevice as sd
+    sd_available = True
+except ModuleNotFoundError:
+    sd_available = False
+
+# 必要モジュールの確認
+if not librosa_available and not sd_available:
+    st.error(
+        "MP3読み込み(librosa)とマイク録音(sounddevice)両方のモジュールが不足しています。\n"
+        "requirements.txt に 'librosa' または 'sounddevice' を追加して再デプロイしてください。"
+    )
+    st.stop()
 
 # アプリタイトル
 st.title("音声波形表示とデジタル化プロセスのアニメーション")
 
-# データ取得方法の選択肢を常に表示
-mode = st.radio(
-    "音声データの取得方法を選択してください",
-    ("既存ファイル (MP3)", "既存ファイル (WAV)", "マイク録音")
-)
+# 入力モード
+modes = []
+if librosa_available:
+    modes.append("MP3ファイル読み込み")
+if sd_available:
+    modes.append("マイク録音")
+mode = st.radio("音声データの取得方法を選択してください", modes)
 
 data = None
 sr = None
 
-# 既存MP3読み込み
-if mode == "既存ファイル (MP3)":
+# MP3ファイル読み込み
+if mode == "MP3ファイル読み込み":
+    if not librosa_available:
+        st.error("MP3読み込み用モジュール(librosa)がインストールされていません。requirements.txt を更新してください。")
+        st.stop()
     uploaded_file = st.file_uploader("MP3ファイルをアップロードしてください", type=["mp3"])
     if uploaded_file:
         try:
-            import librosa
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             tmp.write(uploaded_file.read())
             tmp.flush()
             data, sr = librosa.load(tmp.name, sr=None, mono=True)
             st.success(f"MP3読み込み成功 (サンプリングレート: {sr} Hz)")
-        except ModuleNotFoundError:
-            st.error("MP3読み込み用のモジュール(librosa)がインストールされていません。requirements.txt を更新してください。")
         except Exception as e:
-            st.error(f"MP3読み込みエラー: {e}")
-
-# 既存WAV読み込み
-elif mode == "既存ファイル (WAV)":
-    uploaded_file = st.file_uploader("WAVファイルをアップロードしてください", type=["wav"])
-    if uploaded_file:
-        try:
-            raw = uploaded_file.read()
-            wf = wave.open(tempfile.SpooledTemporaryFile(mode='w+b', max_size=10**7))
-            wf = wave.open(tempfile.NamedTemporaryFile(delete=False, suffix=".wav"), 'wb')
-            # Direct open from buffer
-            wf = wave.open(tempfile.NamedTemporaryFile(delete=False, suffix=".wav").name, 'wb')
-            # Use wave read from in-memory
-            wf = wave.open(tempfile.NamedTemporaryFile(delete=False, suffix=".wav").name)
-        except Exception:
-            # simpler: use librosa to read wav if available
-            try:
-                import librosa
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-                tmp.write(uploaded_file.read())
-                tmp.flush()
-                data, sr = librosa.load(tmp.name, sr=None, mono=True)
-                st.success(f"WAV読み込み成功 (サンプリングレート: {sr} Hz)")
-            except Exception as e:
-                st.error(f"WAV読み込みエラー: {e}")
+            st.error(f"MP3読み込みに失敗しました: {e}")
 
 # マイク録音
 elif mode == "マイク録音":
-    duration = st.slider("録音時間 (秒)", 1, 10, 5)
+    if not sd_available:
+        st.error("マイク録音用モジュール(sounddevice)がインストールされていません。requirements.txt を更新してください。")
+        st.stop()
+    duration = st.slider("録音時間 (秒)", min_value=1, max_value=10, value=5)
     if st.button("録音開始"):
-        try:
-            import sounddevice as sd
-            st.info(f"録音中... {duration}秒")
-            sr = 44100
-            recording = sd.rec(int(duration * sr), samplerate=sr, channels=1, dtype='float32')
-            sd.wait()
-            data = recording.flatten()
-            st.success("録音完了！")
-        except ModuleNotFoundError:
-            st.error("マイク録音用のモジュール(sounddevice)がインストールされていません。requirements.txt を更新してください。")
-        except Exception as e:
-            st.error(f"録音エラー: {e}")
+        st.info(f"録音中... {duration}秒")
+        sr = 44100
+        recording = sd.rec(int(duration * sr), samplerate=sr, channels=1, dtype='float32')
+        sd.wait()
+        data = recording.flatten()
+        st.success("録音が完了しました！")
 
-# データ処理開始
+# データ処理
 if data is not None and sr is not None:
+    # 時間軸
     t = np.arange(len(data)) / sr
-    fs = st.slider("標本化周波数 (Hz)", 1000, sr, int(sr/2), 100)
-    bits = st.slider("量子化ビット数", 1, 16, 8)
-    # 元波形
+
+    # パラメータ
+    fs = st.slider("標本化周波数 (Hz)", min_value=1000, max_value=sr, value=int(sr/2), step=100)
+    bits = st.slider("量子化ビット数", min_value=1, max_value=16, value=8)
+
+    # 元波形表示
     df_orig = pd.DataFrame({"振幅": data}, index=t)
     st.line_chart(df_orig)
+
     # ダウンサンプリング
-    factor = max(int(sr/fs),1)
+    factor = max(int(sr / fs), 1)
     data_resampled = data[::factor]
     t_resampled = t[::factor]
     df_res = pd.DataFrame({"振幅 (標本点)": data_resampled}, index=t_resampled)
     st.line_chart(df_res)
-    # デジタル化プロセス
+
+    # デジタル化プロセス(最初の5標本点)
     max_val = np.max(np.abs(data_resampled))
-    norm = data_resampled[:5]/max_val if max_val!=0 else data_resampled[:5]
-    levels = 2**bits
-    q = np.round((norm+1)/2*(levels-1)).astype(int)
+    norm = data_resampled[:5] / max_val if max_val != 0 else data_resampled[:5]
+    levels = 2 ** bits
+    q = np.round((norm + 1) / 2 * (levels - 1)).astype(int)
+
     for i in range(5):
         st.write(f"--- ステップ {i+1} ---")
         st.write(f"時間: {t_resampled[i]:.4f} 秒")
         st.write(f"量子化前の値: {data_resampled[i]:.4f}")
         st.write(f"正規化値: {norm[i]:.4f}")
-        st.write(f"量子化レベル: {q[i]} / {levels-1}")
+        st.write(f"量子化レベル: {q[i]} / {levels - 1}")
         binary = format(int(q[i]), f'0{bits}b')
         st.write(f"符号化 (2進数): {binary}")
         time.sleep(1)
-    st.success("デジタル化プロセス完了！")
+
+    st.success("デジタル化プロセスが完了しました！")
