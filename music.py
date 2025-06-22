@@ -43,9 +43,11 @@ target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000
 bit_depth = st.slider("量子化ビット数", 8, 24, 16, step=1)
 
 # データ量の計算式表示（固定）
-# 標本化周波数 × 量子化ビット数 × 再生時間 ÷ 8 をバイト、KB、MBで表示
+# (音源はステレオ(2ch)とする)
+# 標本化周波数 × 量子化ビット数 × チャンネル数(2) × 再生時間 ÷ 8 をバイト、KB、MBで表示
+
 duration = len(data) / orig_sr  # 秒数
-bytes_size = target_sr * bit_depth * duration / 8
+bytes_size = target_sr * bit_depth * 2 * duration / 8  # 2ch分を考慮
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
 # 3桁区切りでフォーマット
@@ -53,7 +55,9 @@ bytes_str = f"{int(bytes_size):,}"
 kb_str = f"{kb_size:,.2f}"
 mb_str = f"{mb_size:,.2f}"
 # 太文字で表示
-st.markdown(f"**データ量の計算式: {target_sr:,} Hz × {bit_depth:,} ビット × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**")
+st.markdown(
+    f"**データ量の計算式: {target_sr:,} Hz × {bit_depth:,} ビット × 2 チャンネル × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**"
+)
 
 # 問いを追加
 st.write("---")
