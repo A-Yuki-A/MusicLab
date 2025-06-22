@@ -42,32 +42,6 @@ st.write("### 設定変更")
 target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000)
 bit_depth = st.slider("量子化ビット数", 8, 24, 16, step=1)
 
-# 音のデータ量 公式表示
-st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
-
-# データ量の計算式表示（固定）
-# (音源はステレオ(2ch)とする)
-# 標本化周波数 × 量子化ビット数 × チャンネル数(2) × 再生時間 ÷ 8 をバイト、KB、MBで表示
-
-duration = len(data) / orig_sr  # 再生時間(秒)
-bytes_size = target_sr * bit_depth * 2 * duration / 8  # 2ch分を考慮
-kb_size = bytes_size / 1024
-mb_size = kb_size / 1024
-# 3桁区切りでフォーマット
-bytes_str = f"{int(bytes_size):,}"
-kb_str = f"{kb_size:,.2f}"
-mb_str = f"{mb_size:,.2f}"
-# 太文字で表示
-st.markdown(
-    f"**データ量の計算式: {target_sr:,} Hz × {bit_depth:,} ビット × 2 チャンネル × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**"
-)
-
-# チャンネル説明
-st.write("- ステレオ(2チャンネル): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
-st.write("- モノラル(1チャンネル): 1つの音声信号で再生します。音の定位は中央になります。")
-
-
-
 # リサンプルと量子化
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
 max_int = 2**(bit_depth - 1) - 1
@@ -113,3 +87,27 @@ st.write("---")
 st.write("**問1: 標本化周波数を変えると音がどのように変化しますか？**")
 st.write("**問2: 量子化ビット数を変えると音がどのように変化しますか？**")
 st.write("---")
+
+# 音のデータ量 公式表示
+st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
+
+# データ量の計算式表示（固定）
+# (音源はステレオ(2ch)とする)
+# 標本化周波数 × 量子化ビット数 × チャンネル数(2) × 再生時間 ÷ 8 をバイト、KB、MBで表示
+
+duration = len(data) / orig_sr  # 再生時間(秒)
+bytes_size = target_sr * bit_depth * 2 * duration / 8  # 2ch分を考慮
+kb_size = bytes_size / 1024
+mb_size = kb_size / 1024
+# 3桁区切りでフォーマット
+bytes_str = f"{int(bytes_size):,}"
+kb_str = f"{kb_size:,.2f}"
+mb_str = f"{mb_size:,.2f}"
+# 太文字で表示
+st.markdown(
+    f"**データ量の計算式: {target_sr:,} Hz × {bit_depth:,} ビット × 2 チャンネル × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**"
+)
+
+# チャンネル説明
+st.write("- ステレオ(2チャンネル): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
+st.write("- モノラル(1チャンネル): 1つの音声信号で再生します。音の定位は中央になります。")
