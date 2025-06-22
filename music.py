@@ -41,6 +41,7 @@ st.title("🎧 MP3 音声解析ツール")
 
 uploaded = st.file_uploader("MP3 ファイルをアップロード", type="mp3")
 if uploaded:
+    # 音声データの読み込み
     data, sr = load_mp3(uploaded)
     st.write(f"**サンプリング周波数:** {sr} Hz")
 
