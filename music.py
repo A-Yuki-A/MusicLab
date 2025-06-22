@@ -67,7 +67,11 @@ ax2.set_xlabel("Time (s)")
 ax2.set_ylabel("Amplitude")
 st.pyplot(fig2, use_container_width=False)
 
-# 再生
+# サポートするビット深度とサブタイプのマッピング
+subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
+selected_subtype = subtype_map.get(bit_depth, 'PCM_16')
+
+# 再生用 WAV を一時ファイルに保存して再生
 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
-    sf.write(out.name, quantized, target_sr, subtype=f"PCM_{bit_depth}")
+    sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
     st.audio(out.name, format="audio/wav")
