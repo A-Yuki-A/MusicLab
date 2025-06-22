@@ -29,8 +29,7 @@ def load_mp3(uploaded_file):
 # ── Streamlit アプリ本体 ──
 st.title("🎧 MP3 Resampler & Quantizer")
 
-# ファイルアップロード
-uploaded = st.file_uploader("Upload MP3 file", type="mp3")
+# ファイルアップロード# ファイルアップロード\uploaded = st.file_uploader("Upload MP3 file", type="mp3")
 if not uploaded:
     st.info("Please upload an MP3 file.")
     st.stop()
@@ -53,16 +52,28 @@ quantized = np.round(rs_data * max_int) / max_int
 st.write("### Waveform Comparison")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
 
+# 軸範囲を固定
+# 最大時間はオリジナルの長さを基準にする
+max_time = len(data) / orig_sr
+ax1.set_xlim(0, max_time)
+ax2.set_xlim(0, max_time)
+# 振幅は-1から1の範囲
+ax1.set_ylim(-1, 1)
+ax2.set_ylim(-1, 1)
+
 # 元の波形
-t_orig = np.linspace(0, len(data) / orig_sr, num=len(data))
+t_orig = np.linspace(0, max_time, num=len(data))
 ax1.plot(t_orig, data)
 ax1.set_title("Original Waveform")
 ax1.set_xlabel("Time (s)")
 ax1.set_ylabel("Amplitude")
 
 # 処理後の波形
-t_proc = np.linspace(0, len(quantized) / target_sr, num=len(quantized))
-ax2.plot(t_proc, quantized)
+# プロットのX軸に合わせてデータを切り詰め
+proc_len = min(len(quantized), int(max_time * target_sr))
+quant_trim = quantized[:proc_len]
+t_proc = np.linspace(0, max_time, num=proc_len)
+ax2.plot(t_proc, quant_trim)
 ax2.set_title(f"Processed Waveform ({target_sr} Hz, {bit_depth}-bit)")
 ax2.set_xlabel("Time (s)")
 ax2.set_ylabel("Amplitude")
