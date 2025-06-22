@@ -105,7 +105,7 @@ kb_str = f"{kb_size:,.2f}"
 mb_str = f"{mb_size:,.2f}"
 # 太文字で表示
 st.markdown(
-    f"**データ量の計算式: {target_sr:,} Hz × {bit_depth:,} ビット × 2 ch × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**"
+    f"**データ量=: {target_sr:,} Hz × {bit_depth:,} ビット × 2 ch × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**"
 )
 
 # チャンネル説明
