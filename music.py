@@ -44,8 +44,6 @@ bit_depth = st.slider("量子化ビット数", 8, 24, 16, step=1)
 
 # データ量の計算式表示（固定）
 # 標本化周波数 × 量子化ビット数 × 再生時間 ÷ 8 をバイト、KB、MBで表示
-# 再生時間は元の長さを使用
-
 duration = len(data) / orig_sr  # 秒数
 bytes_size = target_sr * bit_depth * duration / 8
 kb_size = bytes_size / 1024
@@ -73,22 +71,22 @@ st.write("### 波形比較")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
 
 # 軸を固定: 時間0〜再生時間、振幅-1〜1
-max_time = duration
-ax1.set_xlim(0, max_time)
-ax2.set_xlim(0, max_time)
+duration = len(data) / orig_sr
+ax1.set_xlim(0, duration)
+ax2.set_xlim(0, duration)
 ax1.set_ylim(-1, 1)
 ax2.set_ylim(-1, 1)
 
 # 元波形
-t_orig = np.linspace(0, max_time, num=len(data))
-ax1.plot(t_orig if 't_orig' in locals() else t_orig := np.linspace(0, max_time, num=len(data)), data)
+t_orig = np.linspace(0, duration, num=len(data))
+ax1.plot(t_orig, data)
 ax1.set_title("Original Waveform")
 ax1.set_xlabel("Time (s)")
 ax1.set_ylabel("Amplitude")
 
 # 処理後波形
-proc_len = min(len(quantized), int(max_time * target_sr))
-t_proc = np.linspace(0, max_time, num=proc_len)
+proc_len = min(len(quantized), int(duration * target_sr))
+t_proc = np.linspace(0, duration, num=proc_len)
 ax2.plot(t_proc, quantized[:proc_len])
 ax2.set_title(f"Processed Waveform ({target_sr:,} Hz, {bit_depth:,} ビット)")
 ax2.set_xlabel("Time (s)")
