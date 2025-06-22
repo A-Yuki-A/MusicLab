@@ -29,43 +29,45 @@ def load_mp3(uploaded_file):
 # ── Streamlit アプリ本体 ──
 st.title("🎧 MP3 Resampler & Quantizer")
 
+# ファイルアップロード
 uploaded = st.file_uploader("Upload MP3 file", type="mp3")
 if not uploaded:
     st.info("Please upload an MP3 file.")
     st.stop()
 
-# 元データ読み込み
+# 音声読み込み
 data, orig_sr = load_mp3(uploaded)
-st.write(f"**Original SR:** {orig_sr} Hz")
 
-# 元波形表示
-st.write("### Waveform")
-fig, ax = plt.subplots()
-t = np.linspace(0, len(data) / orig_sr, num=len(data))
-ax.plot(t, data)
-ax.set_xlabel("Time (s)")
-ax.set_ylabel("Amplitude")
-st.pyplot(fig, use_container_width=False)
-
-# スライダー設定（波形の下）
+# 処理パラメータ設定（波形表示の下に配置）
 st.write("### Settings")
 target_sr = st.slider("Sampling Rate (Hz)", 8000, 48000, orig_sr, step=1000)
 bit_depth = st.slider("Bit Depth (bits)", 8, 24, 16, step=1)
-st.write(f"**Resample to:** {target_sr} Hz, **Quantize to:** {bit_depth}-bit")
+st.write(f"**Original SR:** {orig_sr} Hz → **Target SR:** {target_sr} Hz | **Quantize:** {bit_depth}-bit")
 
 # リサンプル & 量子化
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
 max_int = 2**(bit_depth - 1) - 1
 quantized = np.round(rs_data * max_int) / max_int
 
-# 処理後波形表示
-st.write("### Waveform after Processing")
-fig2, ax2 = plt.subplots()
-t2 = np.linspace(0, len(quantized) / target_sr, num=len(quantized))
-ax2.plot(t2, quantized)
+# 波形の比較表示
+st.write("### Waveform Comparison")
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
+
+# 元の波形
+t_orig = np.linspace(0, len(data) / orig_sr, num=len(data))
+ax1.plot(t_orig, data)
+ax1.set_title("Original Waveform")
+ax1.set_xlabel("Time (s)")
+ax1.set_ylabel("Amplitude")
+
+# 処理後の波形
+t_proc = np.linspace(0, len(quantized) / target_sr, num=len(quantized))
+ax2.plot(t_proc, quantized)
+ax2.set_title(f"Processed Waveform ({target_sr} Hz, {bit_depth}-bit)")
 ax2.set_xlabel("Time (s)")
 ax2.set_ylabel("Amplitude")
-st.pyplot(fig2, use_container_width=False)
+
+st.pyplot(fig, use_container_width=False)
 
 # サポートするビット深度とサブタイプのマッピング
 subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
