@@ -25,21 +25,23 @@ def load_mp3(uploaded_file):
     data /= np.abs(data).max()  # normalize to [-1,1]
     return data, sr
 
-st.title("🎧 MP3 Resampler & Quantizer")
+# ── Streamlit アプリ本体 ──
+# タイトル（イラスト削除）
+st.title("MP3 Resampler & Quantizer")
 
 # File upload
-uploaded = st.file_uploader("Upload MP3 file", type="mp3")
+uploaded = st.file_uploader("MP3ファイルをアップロード", type="mp3")
 if not uploaded:
-    st.info("Please upload an MP3 file to continue.")
+    st.info("MP3ファイルをアップロードしてください。")
     st.stop()
 
 # Load audio
 data, orig_sr = load_mp3(uploaded)
 
-# Settings
-st.write("### Settings")
-target_sr = st.slider("Sampling Rate (Hz)", 8000, 48000, orig_sr, step=1000)
-bit_depth = st.slider("Quantization Bits", 8, 24, 16, step=1)
+# 設定変更
+st.write("### 設定変更")
+target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000)
+bit_depth = st.slider("量子化ビット数 (bits)", 8, 24, 16, step=1)
 st.write(f"Original SR: {orig_sr} Hz → Target SR: {target_sr} Hz | Quantization: {bit_depth}-bit")
 
 # Resample and quantize
@@ -47,8 +49,8 @@ data_rs = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
 max_int = 2**(bit_depth - 1) - 1
 quantized = np.round(data_rs * max_int) / max_int
 
-# Waveform comparison
-st.write("### Waveform Comparison")
+# 波形比較
+st.write("### 波形比較")
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 9), constrained_layout=True)
 
 # Fixed axes
