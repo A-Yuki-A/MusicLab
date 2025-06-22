@@ -12,8 +12,7 @@ AudioSegment.ffprobe   = "/usr/bin/ffprobe"
 
 def load_mp3(uploaded_file):
     """
-    アップロードされた MP3 を一時ファイル経由で読み込み、
-    正規化した NumPy 配列とサンプリング周波数を返す
+    Load MP3 via temp file and return normalized numpy array and sampling rate.
     """
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
         tmp.write(uploaded_file.read())
@@ -22,79 +21,77 @@ def load_mp3(uploaded_file):
     sr = audio.frame_rate
     data = np.array(audio.get_array_of_samples(), dtype=np.float32)
     if audio.channels == 2:
-        data = data.reshape((-1, 2)).mean(axis=1)  # モノラル化
-    data /= np.abs(data).max()  # 正規化
+        data = data.reshape((-1, 2)).mean(axis=1)  # convert to mono
+    data /= np.abs(data).max()  # normalize to [-1,1]
     return data, sr
 
-# ── Streamlit アプリ本体 ──
 st.title("🎧 MP3 Resampler & Quantizer")
 
-# ファイルアップロード
-df = st.file_uploader("MP3ファイルをアップロード", type="mp3")
-if not df:
-    st.info("MP3ファイルをアップロードしてください。")
+# File upload
+uploaded = st.file_uploader("Upload MP3 file", type="mp3")
+if not uploaded:
+    st.info("Please upload an MP3 file to continue.")
     st.stop()
 
-# 音声読み込み
-data, orig_sr = load_mp3(df)
+# Load audio
+data, orig_sr = load_mp3(uploaded)
 
-# 設定変更
-st.write("### 設定変更")
-target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000)
-bit_depth = st.slider("量子化ビット数 (bits)", 8, 24, 16, step=1)
-st.write(f"**Original SR:** {orig_sr} Hz → **Target SR:** {target_sr} Hz | **Quantize:** {bit_depth}-bit")
+# Settings
+st.write("### Settings")
+target_sr = st.slider("Sampling Rate (Hz)", 8000, 48000, orig_sr, step=1000)
+bit_depth = st.slider("Quantization Bits", 8, 24, 16, step=1)
+st.write(f"Original SR: {orig_sr} Hz → Target SR: {target_sr} Hz | Quantization: {bit_depth}-bit")
 
-# リサンプル & 量子化
-rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
+# Resample and quantize
+data_rs = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
 max_int = 2**(bit_depth - 1) - 1
-quantized = np.round(rs_data * max_int) / max_int
+quantized = np.round(data_rs * max_int) / max_int
 
-# 波形比較表示
-st.write("### 波形比較")
+# Waveform comparison
+st.write("### Waveform Comparison")
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 9), constrained_layout=True)
 
-# 軸範囲を固定
+# Fixed axes
 max_time = len(data) / orig_sr
 ax1.set_xlim(0, max_time)
 ax2.set_xlim(0, max_time)
 ax1.set_ylim(-1, 1)
 ax2.set_ylim(-1, 1)
 
-# 元の波形
+# Original waveform
 t_orig = np.linspace(0, max_time, num=len(data))
-ax1.plot(t_orig := t_orig if 't_orig' in locals() else np.linspace(0, max_time, num=len(data)), data)
-ax1.set_title("元の波形")
-ax1.set_xlabel("時間 (秒)")
-ax1.set_ylabel("振幅")
+ax1.plot(t_orig, data)
+ax1.set_title("Original Waveform")
+ax1.set_xlabel("Time (s)")
+ax1.set_ylabel("Amplitude")
 
-# 処理後の波形
-proc_len_full = min(len(quantized), int(max_time * target_sr))
-ax2.plot(np.linspace(0, max_time, num=proc_len_full), quantized[:proc_len_full])
-ax2.set_title(f"処理後の波形 ({target_sr} Hz, {bit_depth}-bit)")
-ax2.set_xlabel("時間 (秒)")
-ax2.set_ylabel("振幅")
+# Processed waveform
+proc_len = min(len(quantized), int(max_time * target_sr))
+t_proc = np.linspace(0, max_time, num=proc_len)
+ax2.plot(t_proc, quantized[:proc_len])
+ax2.set_title(f"Processed Waveform ({target_sr} Hz, {bit_depth}-bit)")
+ax2.set_xlabel("Time (s)")
+ax2.set_ylabel("Amplitude")
 
-# ズーム表示 (最初の20 ms 相当)
-zoom_len = int(target_sr * 0.02)
-time_zoom = np.linspace(0, zoom_len/target_sr, num=zoom_len)
-zoom_resampled = rs_data[:zoom_len]
+# Zoom view (first 20 ms)
+zoom_duration = 0.02
+zoom_len = int(target_sr * zoom_duration)
+time_zoom = np.linspace(0, zoom_duration, num=zoom_len)
+zoom_resampled = data_rs[:zoom_len]
 zoom_quant = quantized[:zoom_len]
-ax3.set_xlim(0, zoom_len/target_sr)
-ax3.set_ylim(-1, 1)
-ax3.plot(time_zoom, zoom_resampled, label="Resampled")
+ax3.plot(time_zoom, zoom_resampled, label="Resampled", linestyle='-')
 ax3.step(time_zoom, zoom_quant, where='mid', label="Quantized", linewidth=1.0)
-ax3.set_title("波形ズーム (最初の20ms)")
-ax3.set_xlabel("時間 (秒)")
-ax3.set_ylabel("振幅")
+ax3.plot(time_zoom, zoom_quant, marker='o', linestyle='None', label="Quantized Samples")
+ax3.set_title("Zoomed Waveform (First 20 ms)")
+ax3.set_xlabel("Time (s)")
+ax3.set_ylabel("Amplitude")
 ax3.legend()
 
 st.pyplot(fig, use_container_width=False)
 
-# WAV サブタイプマップ
+# Write out WAV and play
 subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
 selected_subtype = subtype_map.get(bit_depth, 'PCM_16')
-
-# 再生用 WAV を一時ファイルに保存して再生
 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
     sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
     st.audio(out.name, format="audio/wav")
