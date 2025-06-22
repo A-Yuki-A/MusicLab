@@ -1,5 +1,5 @@
+# requirements.txt
 streamlit
-numpy
-matplotlib
 pydub
 librosa
+# ffmpeg-python ← 必要ないなら消す
