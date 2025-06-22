@@ -27,17 +27,21 @@ def load_mp3(uploaded_file):
 
 st.title("🎧 MP3 Resampler & Quantizer")
 
-# サイドバーに設定コントロール
+# サイドバーにスライダーで設定コントロール
 st.sidebar.header("Settings")
-target_sr = st.sidebar.selectbox(
+target_sr = st.sidebar.slider(
     "Sampling Rate (Hz)",
-    [8000, 16000, 22050, 44100, 48000],
-    index=3
+    min_value=8000,
+    max_value=48000,
+    value=44100,
+    step=1000
 )
-bit_depth = st.sidebar.selectbox(
+bit_depth = st.sidebar.slider(
     "Bit Depth (bits)",
-    [8, 16, 24],
-    index=1
+    min_value=8,
+    max_value=24,
+    value=16,
+    step=1
 )
 
 uploaded = st.file_uploader("Upload MP3 file", type="mp3")
@@ -57,8 +61,8 @@ data_rs = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
 max_int = 2**(bit_depth - 1) - 1
 quantized = np.round(data_rs * max_int) / max_int
 
-# 波形表示
-st.write("### Waveform")
+# 波形表示（更新後データ）
+st.write("### Waveform after Resampling & Quantization")
 fig, ax = plt.subplots()
 t = np.linspace(0, len(quantized) / target_sr, num=len(quantized))
 ax.plot(t, quantized)
