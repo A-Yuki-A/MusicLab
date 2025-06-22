@@ -42,18 +42,17 @@ data, orig_sr = load_mp3(df)
 st.write("### 設定変更")
 target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000)
 bit_depth = st.slider("量子化ビット数", 8, 24, 16, step=1)
-st.write(f"元のサンプリングレート: {orig_sr} Hz → 目標サンプリングレート: {target_sr} Hz | 量子化: {bit_depth} ビット")
+# 日本語表記に変更
+st.write(f"元の標本化周波数: {orig_sr} Hz → 目標標本化周波数: {target_sr} Hz | 量子化ビット数: {bit_depth} ビット")
 
-# データサイズ計算
-# サンプル数 × ビット数 ÷ 8 をKB/MBに換算
-rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
-total_samples = len(rs_data)
-total_bytes = total_samples * (bit_depth / 8)
-kb = total_bytes / 1024
-mb = kb / 1024
-st.write(f"データサイズ: {int(total_bytes)} バイト = {kb:.2f} KB ({mb:.2f} MB)")
+# データ量の計算式表示（固定）
+# 標本化周波数 × 量子化ビット数 × 再生時間 ÷ 8
+duration = len(data) / orig_sr
+bytes_size = target_sr * bit_depth * duration / 8
+st.write(f"データ量の計算: {target_sr} Hz × {bit_depth} ビット × {duration:.2f} 秒 ÷ 8  = {int(bytes_size)} バイト")
 
 # リサンプルと量子化
+rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
 max_int = 2**(bit_depth - 1) - 1
 quantized = np.round(rs_data * max_int) / max_int
 
@@ -62,7 +61,7 @@ st.write("### 波形比較")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
 
 # 軸を固定: 時間0〜元の長さ、振幅-1〜1
-max_time = len(data) / orig_sr
+max_time = duration
 ax1.set_xlim(0, max_time)
 ax2.set_xlim(0, max_time)
 ax1.set_ylim(-1, 1)
