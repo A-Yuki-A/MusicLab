@@ -57,14 +57,12 @@ fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 9), constrained_layout=Tru
 max_time = len(data) / orig_sr
 ax1.set_xlim(0, max_time)
 ax2.set_xlim(0, max_time)
-ax3.set_xlim(0, max_time * 0.05)  # 最初の5%をズーム
 ax1.set_ylim(-1, 1)
 ax2.set_ylim(-1, 1)
-ax3.set_ylim(-1, 1)
 
 # 元の波形
 t_orig = np.linspace(0, max_time, num=len(data))
-ax1.plot(t_orig := np.linspace(0, max_time, num=len(data)), data)
+ax1.plot(t_orig := t_orig if 't_orig' in locals() else np.linspace(0, max_time, num=len(data)), data)
 ax1.set_title("元の波形")
 ax1.set_xlabel("時間 (秒)")
 ax1.set_ylabel("振幅")
@@ -76,14 +74,16 @@ ax2.set_title(f"処理後の波形 ({target_sr} Hz, {bit_depth}-bit)")
 ax2.set_xlabel("時間 (秒)")
 ax2.set_ylabel("振幅")
 
-# ズーム表示 (最初の 50 ms 相当)
-zoom_len = int(target_sr * 0.05)
-zoom_orig = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)[:zoom_len]
-zoom_proc = quantized[:zoom_len]
+# ズーム表示 (最初の20 ms 相当)
+zoom_len = int(target_sr * 0.02)
 time_zoom = np.linspace(0, zoom_len/target_sr, num=zoom_len)
-ax3.plot(time_zoom, zoom_orig, label="リサンプル後")
-ax3.plot(time_zoom, zoom_proc, linestyle='--', label="量子化後")
-ax3.set_title("波形ズーム (最初の50ms)")
+zoom_resampled = rs_data[:zoom_len]
+zoom_quant = quantized[:zoom_len]
+ax3.set_xlim(0, zoom_len/target_sr)
+ax3.set_ylim(-1, 1)
+ax3.plot(time_zoom, zoom_resampled, label="Resampled")
+ax3.step(time_zoom, zoom_quant, where='mid', label="Quantized", linewidth=1.0)
+ax3.set_title("波形ズーム (最初の20ms)")
 ax3.set_xlabel("時間 (秒)")
 ax3.set_ylabel("振幅")
 ax3.legend()
