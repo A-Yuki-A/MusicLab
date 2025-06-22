@@ -4,11 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import librosa
 import librosa.display
-import io
 import tempfile
 
-# ── ここで ffmpeg/ffprobe の場所を指定 ──
-# Streamlit Cloud 上では通常以下のパスにインストールされています
+# ── ffmpeg/ffprobe の場所を指定 ──
 AudioSegment.converter = "/usr/bin/ffmpeg"
 AudioSegment.ffprobe   = "/usr/bin/ffprobe"
 
@@ -43,7 +41,6 @@ st.title("🎧 MP3 音声解析ツール")
 
 uploaded = st.file_uploader("MP3 ファイルをアップロード", type="mp3")
 if uploaded:
-    # 読み込み
     data, sr = load_mp3(uploaded)
     st.write(f"**サンプリング周波数:** {sr} Hz")
 
