@@ -30,18 +30,18 @@ def load_mp3(uploaded_file):
 st.title("🎧 MP3 Resampler & Quantizer")
 
 # ファイルアップロード
-uploaded = st.file_uploader("Upload MP3 file", type="mp3")
-if not uploaded:
-    st.info("Please upload an MP3 file.")
+df = st.file_uploader("MP3ファイルをアップロード", type="mp3")
+if not df:
+    st.info("MP3ファイルをアップロードしてください。")
     st.stop()
 
 # 音声読み込み
-data, orig_sr = load_mp3(uploaded)
+data, orig_sr = load_mp3(df)
 
-# 処理パラメータ設定（波形表示の下に配置）
-st.write("### Settings")
-target_sr = st.slider("Sampling Rate (Hz)", 8000, 48000, orig_sr, step=1000)
-bit_depth = st.slider("Bit Depth (bits)", 8, 24, 16, step=1)
+# 設定変更
+st.write("### 設定変更")
+target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000)
+bit_depth = st.slider("量子化ビット数 (bits)", 8, 24, 16, step=1)
 st.write(f"**Original SR:** {orig_sr} Hz → **Target SR:** {target_sr} Hz | **Quantize:** {bit_depth}-bit")
 
 # リサンプル & 量子化
@@ -49,39 +49,48 @@ rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
 max_int = 2**(bit_depth - 1) - 1
 quantized = np.round(rs_data * max_int) / max_int
 
-# 波形の比較表示
-st.write("### Waveform Comparison")
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
+# 波形比較表示
+st.write("### 波形比較")
+fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 9), constrained_layout=True)
 
 # 軸範囲を固定
-# 最大時間はオリジナルの長さを基準にする
 max_time = len(data) / orig_sr
 ax1.set_xlim(0, max_time)
 ax2.set_xlim(0, max_time)
-# 振幅は-1から1の範囲
+ax3.set_xlim(0, max_time * 0.05)  # 最初の5%をズーム
 ax1.set_ylim(-1, 1)
 ax2.set_ylim(-1, 1)
+ax3.set_ylim(-1, 1)
 
 # 元の波形
 t_orig = np.linspace(0, max_time, num=len(data))
-ax1.plot(t_orig, data)
-ax1.set_title("Original Waveform")
-ax1.set_xlabel("Time (s)")
-ax1.set_ylabel("Amplitude")
+ax1.plot(t_orig := np.linspace(0, max_time, num=len(data)), data)
+ax1.set_title("元の波形")
+ax1.set_xlabel("時間 (秒)")
+ax1.set_ylabel("振幅")
 
 # 処理後の波形
-# プロットのX軸に合わせてデータを切り詰め
-proc_len = min(len(quantized), int(max_time * target_sr))
-quant_trim = quantized[:proc_len]
-t_proc = np.linspace(0, max_time, num=proc_len)
-ax2.plot(t_proc, quant_trim)
-ax2.set_title(f"Processed Waveform ({target_sr} Hz, {bit_depth}-bit)")
-ax2.set_xlabel("Time (s)")
-ax2.set_ylabel("Amplitude")
+proc_len_full = min(len(quantized), int(max_time * target_sr))
+ax2.plot(np.linspace(0, max_time, num=proc_len_full), quantized[:proc_len_full])
+ax2.set_title(f"処理後の波形 ({target_sr} Hz, {bit_depth}-bit)")
+ax2.set_xlabel("時間 (秒)")
+ax2.set_ylabel("振幅")
+
+# ズーム表示 (最初の 50 ms 相当)
+zoom_len = int(target_sr * 0.05)
+zoom_orig = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)[:zoom_len]
+zoom_proc = quantized[:zoom_len]
+time_zoom = np.linspace(0, zoom_len/target_sr, num=zoom_len)
+ax3.plot(time_zoom, zoom_orig, label="リサンプル後")
+ax3.plot(time_zoom, zoom_proc, linestyle='--', label="量子化後")
+ax3.set_title("波形ズーム (最初の50ms)")
+ax3.set_xlabel("時間 (秒)")
+ax3.set_ylabel("振幅")
+ax3.legend()
 
 st.pyplot(fig, use_container_width=False)
 
-# サポートするビット深度とサブタイプのマッピング
+# WAV サブタイプマップ
 subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
 selected_subtype = subtype_map.get(bit_depth, 'PCM_16')
 
