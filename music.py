@@ -29,7 +29,8 @@ def load_mp3(uploaded_file):
 # ── Streamlit アプリ本体 ──
 st.title("🎧 MP3 Resampler & Quantizer")
 
-# ファイルアップロード# ファイルアップロード\uploaded = st.file_uploader("Upload MP3 file", type="mp3")
+# ファイルアップロード
+uploaded = st.file_uploader("Upload MP3 file", type="mp3")
 if not uploaded:
     st.info("Please upload an MP3 file.")
     st.stop()
