@@ -21,8 +21,8 @@ def load_mp3(uploaded_file):
     sr = audio.frame_rate
     data = np.array(audio.get_array_of_samples(), dtype=np.float32)
     if audio.channels == 2:
-        data = data.reshape((-1, 2)).mean(axis=1)  # モノラル化
-    data /= np.abs(data).max()  # [-1,1]に正規化
+        data = data.reshape((-1, 2)).mean(axis=1)
+    data /= np.abs(data).max()
     return data, sr
 
 # ── アプリ本体 ──
@@ -44,15 +44,24 @@ bit_depth = st.slider("量子化ビット数", 8, 24, 16, step=1)
 
 # データ量の計算式表示（固定）
 # 標本化周波数 × 量子化ビット数 × 再生時間 ÷ 8 をバイト、KB、MBで表示
+# 再生時間は元の長さを使用
+
 duration = len(data) / orig_sr  # 秒数
 bytes_size = target_sr * bit_depth * duration / 8
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
-# 3桁区切りのカンマ形式でフォーマット
-bytes_str = f"{int(bytes_size):,}"  
-kb_str = f"{kb_size:,.2f}"  
+# 3桁区切りでフォーマット
+bytes_str = f"{int(bytes_size):,}"
+kb_str = f"{kb_size:,.2f}"
 mb_str = f"{mb_size:,.2f}"
-st.write(f"データ量の計算式: {target_sr:,} Hz × {bit_depth:,} ビット × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)")
+# 太文字で表示
+st.markdown(f"**データ量の計算式: {target_sr:,} Hz × {bit_depth:,} ビット × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**")
+
+# 問いを追加
+st.write("---")
+st.write("**問い1: 標本化周波数を変えると音がどのように変化しますか？**")
+st.write("**問い2: 量子化ビット数を変えると音がどのように変化しますか？**")
+st.write("---")
 
 # リサンプルと量子化
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
@@ -72,18 +81,18 @@ ax2.set_ylim(-1, 1)
 
 # 元波形
 t_orig = np.linspace(0, max_time, num=len(data))
-ax1.plot(t_orig := t_orig if 't_orig' in locals() else t_orig, data)
-ax1.set_title("元の波形")
-ax1.set_xlabel("時間 (秒)")
-ax1.set_ylabel("振幅")
+ax1.plot(t_orig if 't_orig' in locals() else t_orig := np.linspace(0, max_time, num=len(data)), data)
+ax1.set_title("Original Waveform")
+ax1.set_xlabel("Time (s)")
+ax1.set_ylabel("Amplitude")
 
 # 処理後波形
 proc_len = min(len(quantized), int(max_time * target_sr))
 t_proc = np.linspace(0, max_time, num=proc_len)
 ax2.plot(t_proc, quantized[:proc_len])
-ax2.set_title(f"処理後の波形 ({target_sr:,} Hz, {bit_depth:,} ビット)")
-ax2.set_xlabel("時間 (秒)")
-ax2.set_ylabel("振幅")
+ax2.set_title(f"Processed Waveform ({target_sr:,} Hz, {bit_depth:,} ビット)")
+ax2.set_xlabel("Time (s)")
+ax2.set_ylabel("Amplitude")
 
 st.pyplot(fig, use_container_width=False)
 
