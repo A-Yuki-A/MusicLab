@@ -38,12 +38,23 @@ if not uploaded:
 # Load audio
 data, orig_sr = load_mp3(uploaded)
 
-# 設定変更
-st.write("### 設定変更")
+# スライダー設定と表示用パラメータ（波形表示の前に）
 target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000)
 bit_depth = st.slider("量子化ビット数 (bits)", 8, 24, 16, step=1)
-st.write(f"Original SR: {orig_sr} Hz → Target SR: {target_sr} Hz | Quantization: {bit_depth}-bit")
 
+# 動的表示：サンプリングレートと量子化ビット数の日本語表記
+st.write(f"元のサンプリングレート: {orig_sr} Hz → 目標サンプリングレート: {target_sr} Hz | 量子化ビット数: {bit_depth} ビット")
+
+# データ量計算式の表示
+# サンプル数 × ビット数 ÷ 8 = バイト数
+# リサンプル後のデータで計算
+rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
+total_samples = len(rs_data)
+bytes_per_sample = bit_depth / 8
+total_bytes = total_samples * bytes_per_sample
+st.write(f"データ量の計算: {total_samples} サンプル × {bit_depth} ビット ÷ 8 = {int(total_bytes)} バイト")
+
+# 波形比較表示に進む
 # Resample and quantize
 data_rs = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
 
