@@ -1,5 +1,3 @@
-# requirements.txt
 streamlit
 pydub
 librosa
-# ffmpeg-python ← 必要ないなら消す
