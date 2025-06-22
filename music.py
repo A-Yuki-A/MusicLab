@@ -46,7 +46,7 @@ bit_depth = st.slider("量子化ビット数", 8, 24, 16, step=1)
 # (音源はステレオ(2ch)とする)
 # 標本化周波数 × 量子化ビット数 × チャンネル数(2) × 再生時間 ÷ 8 をバイト、KB、MBで表示
 
-duration = len(data) / orig_sr  # 秒数
+duration = len(data) / orig_sr  # 再生時間(秒)
 bytes_size = target_sr * bit_depth * 2 * duration / 8  # 2ch分を考慮
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
@@ -59,10 +59,14 @@ st.markdown(
     f"**データ量の計算式: {target_sr:,} Hz × {bit_depth:,} ビット × 2 チャンネル × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**"
 )
 
-# 問いを追加
+# チャンネル説明
+st.write("- ステレオ(2チャンネル): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
+st.write("- モノラル(1チャンネル): 1つの音声信号で再生します。音の定位は中央になります。")
+
+# 問を追加
 st.write("---")
-st.write("**問い1: 標本化周波数を変えると音がどのように変化しますか？**")
-st.write("**問い2: 量子化ビット数を変えると音がどのように変化しますか？**")
+st.write("**問1: 標本化周波数を変えると音がどのように変化しますか？**")
+st.write("**問2: 量子化ビット数を変えると音がどのように変化しますか？**")
 st.write("---")
 
 # リサンプルと量子化
@@ -83,7 +87,7 @@ ax2.set_ylim(-1, 1)
 
 # 元波形
 t_orig = np.linspace(0, duration, num=len(data))
-ax1.plot(t_orig, data)
+ax1.plot(t_orig := np.linspace(0, duration, num=len(data)), data)
 ax1.set_title("Original Waveform")
 ax1.set_xlabel("Time (s)")
 ax1.set_ylabel("Amplitude")
