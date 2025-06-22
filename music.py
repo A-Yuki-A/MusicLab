@@ -43,9 +43,10 @@ st.write("### Waveform")
 fig, ax = plt.subplots()
 t = np.linspace(0, len(data) / orig_sr, num=len(data))
 ax.plot(t, data)
-ax.set_xlabel("Time (s)")
+ax.set_xlabel("Time (s)
+")
 ax.set_ylabel("Amplitude")
-st.pyplot(fig)
+st.pyplot(fig, use_container_width=False)
 
 # スライダー設定（波形の下）
 st.write("### Settings")
@@ -65,7 +66,7 @@ t2 = np.linspace(0, len(quantized) / target_sr, num=len(quantized))
 ax2.plot(t2, quantized)
 ax2.set_xlabel("Time (s)")
 ax2.set_ylabel("Amplitude")
-st.pyplot(fig2)
+st.pyplot(fig2, use_container_width=False)
 
 # 再生
 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
