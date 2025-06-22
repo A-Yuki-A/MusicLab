@@ -46,6 +46,17 @@ st.write(f"Original SR: {orig_sr} Hz → Target SR: {target_sr} Hz | Quantizatio
 
 # Resample and quantize
 data_rs = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
+
+# データ量計算式の表示
+# サンプル数 × ビット数 ÷ 8 = バイト数
+total_samples = len(data_rs)
+bytes_per_sample = bit_depth / 8
+total_bytes = total_samples * bytes_per_sample
+st.write(f"**Data Size Calculation:** {total_samples} samples × {bit_depth} bits ÷ 8 = {int(total_bytes)} bytes")
+
+max_int = 2**(bit_depth - 1) - 1
+quantized = np.round(data_rs * max_int) / max_int
+data_rs = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
 max_int = 2**(bit_depth - 1) - 1
 quantized = np.round(data_rs * max_int) / max_int
 
