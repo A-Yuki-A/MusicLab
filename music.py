@@ -66,11 +66,7 @@ st.markdown(
 st.write("- ステレオ(2チャンネル): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
 st.write("- モノラル(1チャンネル): 1つの音声信号で再生します。音の定位は中央になります。")
 
-# 問を追加
-st.write("---")
-st.write("**問1: 標本化周波数を変えると音がどのように変化しますか？**")
-st.write("**問2: 量子化ビット数を変えると音がどのように変化しますか？**")
-st.write("---")
+
 
 # リサンプルと量子化
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
@@ -111,3 +107,9 @@ selected_subtype = subtype_map.get(bit_depth, 'PCM_16')
 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
     sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
     st.audio(out.name, format="audio/wav")
+
+# 問を追加
+st.write("---")
+st.write("**問1: 標本化周波数を変えると音がどのように変化しますか？**")
+st.write("**問2: 量子化ビット数を変えると音がどのように変化しますか？**")
+st.write("---")
