@@ -26,7 +26,6 @@ def load_mp3(uploaded_file):
     return data, sr
 
 # ── アプリ本体 ──
-# タイトル（絵文字削除）
 st.title("MP3 Resampler & Quantizer")
 
 # ファイルアップロード
@@ -42,14 +41,18 @@ data, orig_sr = load_mp3(df)
 st.write("### 設定変更")
 target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000)
 bit_depth = st.slider("量子化ビット数", 8, 24, 16, step=1)
-# 日本語表記に変更
-st.write(f"元の標本化周波数: {orig_sr} Hz → 目標標本化周波数: {target_sr} Hz | 量子化ビット数: {bit_depth} ビット")
 
 # データ量の計算式表示（固定）
-# 標本化周波数 × 量子化ビット数 × 再生時間 ÷ 8
-duration = len(data) / orig_sr
+# 標本化周波数 × 量子化ビット数 × 再生時間 ÷ 8 をバイト、KB、MBで表示
+duration = len(data) / orig_sr  # 秒数
 bytes_size = target_sr * bit_depth * duration / 8
-st.write(f"データ量の計算: {target_sr} Hz × {bit_depth} ビット × {duration:.2f} 秒 ÷ 8  = {int(bytes_size)} バイト")
+kb_size = bytes_size / 1024
+mb_size = kb_size / 1024
+# 3桁区切りのカンマ形式でフォーマット
+bytes_str = f"{int(bytes_size):,}"  
+kb_str = f"{kb_size:,.2f}"  
+mb_str = f"{mb_size:,.2f}"
+st.write(f"データ量の計算式: {target_sr:,} Hz × {bit_depth:,} ビット × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)")
 
 # リサンプルと量子化
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
@@ -60,7 +63,7 @@ quantized = np.round(rs_data * max_int) / max_int
 st.write("### 波形比較")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
 
-# 軸を固定: 時間0〜元の長さ、振幅-1〜1
+# 軸を固定: 時間0〜再生時間、振幅-1〜1
 max_time = duration
 ax1.set_xlim(0, max_time)
 ax2.set_xlim(0, max_time)
@@ -78,7 +81,7 @@ ax1.set_ylabel("振幅")
 proc_len = min(len(quantized), int(max_time * target_sr))
 t_proc = np.linspace(0, max_time, num=proc_len)
 ax2.plot(t_proc, quantized[:proc_len])
-ax2.set_title(f"処理後の波形 ({target_sr} Hz, {bit_depth} ビット)")
+ax2.set_title(f"処理後の波形 ({target_sr:,} Hz, {bit_depth:,} ビット)")
 ax2.set_xlabel("時間 (秒)")
 ax2.set_ylabel("振幅")
 
