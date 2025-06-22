@@ -1,97 +1,128 @@
 import streamlit as st
-from pydub import AudioSegment
 import numpy as np
-import matplotlib.pyplot as plt
-import librosa
-import tempfile
-import soundfile as sf
+from PIL import Image, ImageDraw, ImageChops
+import io
+import base64
 
-# ── ffmpeg/ffprobe のパス指定 ──
-AudioSegment.converter = "/usr/bin/ffmpeg"
-AudioSegment.ffprobe   = "/usr/bin/ffprobe"
-
-def load_mp3(uploaded_file):
+# --- ページ背景とフォント設定 ---
+st.markdown(
     """
-    Load MP3 via temp file and return normalized numpy array and sampling rate.
+    <style>
+      /* アプリ背景 */
+      [data-testid="stAppViewContainer"] { background-color: #f5f5f5; }
+      /* コンテナ背景 */
+      div.block-container { background-color: #fcfcfc; padding: 1.5rem; border-radius: 10px; }
+      /* 本文フォント */
+      * { font-size:18px !important; }
+      /* ツール名 */
+      .block-container h1 { color: #333333; font-size:35px !important; margin-top:10px !important; }
+      /* セクション見出し */
+      h2 { font-size:30px !important; }
+      /* 行間調整 */
+      .stMarkdown p, .stWrite > p { line-height:1.2 !important; margin-bottom:4px !important; }
+    </style>
+    """, unsafe_allow_html=True
+)
+
+# --- ツール名 ---
+st.title("Color Depth Explorer")
+
+# --- Color Mixing Demonstration ---
+st.markdown(
     """
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-        tmp.write(uploaded_file.read())
-        tmp_path = tmp.name
-    audio = AudioSegment.from_file(tmp_path, format="mp3")
-    sr = audio.frame_rate
-    data = np.array(audio.get_array_of_samples(), dtype=np.float32)
-    if audio.channels == 2:
-        data = data.reshape((-1, 2)).mean(axis=1)  # convert to mono
-    data /= np.abs(data).max()  # normalize to [-1,1]
-    return data, sr
+    <div style='background-color:#f0f0f0; padding:8px; border-radius:4px; font-size:35px;'>
+      <strong>Color Mixing Demonstration</strong>
+    </div>
+    """, unsafe_allow_html=True
+)
+col1, col2 = st.columns(2)
+size, radius = 200, 40
+cx, cy = size // 2, size // 2
+t_side = size - radius * 2
+h = t_side * np.sqrt(3) / 2
+verts = [np.array([cx, cy - h/2]), np.array([cx - t_side/2, cy + h/2]), np.array([cx + t_side/2, cy + h/2])]
 
-st.title("🎧 MP3 Resampler & Quantizer")
+with col1:
+    t = st.slider("YMC Mix", 0.0, 1.0, 0.0, key="ymc_mix")
+    imgs = []
+    for vert, col in zip(verts, [(255,255,0,180), (255,0,255,180), (0,255,255,180)]):
+        img = Image.new("RGBA", (size, size), "white")
+        draw = ImageDraw.Draw(img)
+        pos = tuple((vert * (1 - t) + np.array([cx, cy]) * t).astype(int))
+        draw.ellipse([pos[0]-radius, pos[1]-radius, pos[0]+radius, pos[1]+radius], fill=col)
+        imgs.append(img)
+    mix = ImageChops.multiply(ImageChops.multiply(imgs[0], imgs[1]), imgs[2])
+    st.image(mix, use_container_width=True)
 
-# File upload
-uploaded = st.file_uploader("Upload MP3 file", type="mp3")
-if not uploaded:
-    st.info("Please upload an MP3 file to continue.")
-    st.stop()
+with col2:
+    t2 = st.slider("RGB Mix", 0.0, 1.0, 0.0, key="rgb_mix")
+    imgs = []
+    for vert, col in zip(verts, [(255,0,0,180), (0,255,0,180), (0,0,255,180)]):
+        img = Image.new("RGBA", (size, size), "black")
+        draw = ImageDraw.Draw(img)
+        pos = tuple((vert * (1 - t2) + np.array([cx, cy]) * t2).astype(int))
+        draw.ellipse([pos[0]-radius, pos[1]-radius, pos[0]+radius, pos[1]+radius], fill=col)
+        imgs.append(img)
+    mix = ImageChops.add(ImageChops.add(imgs[0], imgs[1]), imgs[2])
+    st.image(mix, use_container_width=True)
 
-# Load audio
-data, orig_sr = load_mp3(uploaded)
+# --- 階調（グレースケール） ---
+st.markdown(
+    """
+    <div style='background-color:#f0f0f0; padding:8px; border-radius:4px;'>
+      <strong>階調（グレースケール）</strong>
+    </div>
+    """, unsafe_allow_html=True
+)
+g_bits = st.slider("グレースケールのbit数", 1, 8, 4, key="gray_bits")
+g_levels = 2 ** g_bits
+st.write(f"1画素あたりのbit数: {g_bits} bit")
+st.write(f"総色数: {g_levels:,} 色")
+factors = " × ".join(["2"] * g_bits)
+st.write(f"{g_bits}bitなので {factors} = {g_levels:,} 色（1色につき）")
+g = np.tile(np.linspace(0,255,g_levels,dtype=np.uint8),(50,1))
+g_img = Image.fromarray(g, 'L').resize((600,100), Image.NEAREST)
+st.image(g_img, use_container_width=True)
 
-# Settings
-st.write("### Settings")
-target_sr = st.slider("Sampling Rate (Hz)", 8000, 48000, orig_sr, step=1000)
-bit_depth = st.slider("Quantization Bits", 8, 24, 16, step=1)
-st.write(f"Original SR: {orig_sr} Hz → Target SR: {target_sr} Hz | Quantization: {bit_depth}-bit")
+# --- 階調（RGB） ---
+st.markdown(
+    """
+    <div style='background-color:#f0f0f0; padding:8px; border-radius:4px;'>
+      <strong>階調（RGB）</strong>
+    </div>
+    """, unsafe_allow_html=True
+)
+rgb_bits = st.slider("RGB各色のbit数", 1, 8, 4, key="rgb_bits")
+levels = 2 ** rgb_bits
+pixel_bits = rgb_bits * 3
+total_colors = levels ** 3
+st.write(f"1画素あたりのbit数: R {rgb_bits}bit + G {rgb_bits}bit + B {rgb_bits}bit = {pixel_bits}bit")
+st.write(f"総色数: {total_colors:,} 色")
+st.write(f"各色{rgb_bits}bitなので {' × '.join(['2'] * rgb_bits)} = {levels:,} 色（1色につき）")
+st.write(f"全色で {levels:,} × {levels:,} × {levels:,} = {total_colors:,} 色")
+for comp, col in zip(['R','G','B'], [(255,0,0),(0,255,0),(0,0,255)]):
+    arr = np.zeros((50,levels,3), dtype=np.uint8)
+    arr[:,:,{'R':0,'G':1,'B':2}[comp]] = np.linspace(0,255,levels,dtype=np.uint8)
+    st.image(Image.fromarray(arr).resize((600,100), Image.NEAREST), use_container_width=True)
 
-# Resample and quantize
-data_rs = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
-max_int = 2**(bit_depth - 1) - 1
-quantized = np.round(data_rs * max_int) / max_int
+# --- 確認問題 ---
+st.markdown(
+    """
+    <div style='background-color:#f0f0f0; padding:8px; border-radius:4px; font-size:35px;'>
+      <strong>確認問題</strong>
+    </div>
+    """, unsafe_allow_html=True
+)
 
-# Waveform comparison
-st.write("### Waveform Comparison")
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 9), constrained_layout=True)
+# 問1: ビット数と色数の理解
+st.write("**問1:** 各色に割り当てるビット数が異なると、1画素で表現できる色数はどう変化しますか？ サンプルとしてRGB各色をそれぞれ4bitと6bitにしたときの総色数を答えてください。（例: 4bit → 4色段階、6bit → 64段階）")
+with st.expander("解答・解説1"):
+    st.write("4bitの場合: 各色16段階 → 16 × 16 × 16 = 4096色")
+    st.write("6bitの場合: 各色64段階 → 64 × 64 × 64 = 262144色")
+    st.write("ビット数が増えると各色の段階数が2倍ずつ増え、総色数は段階数の3乗で増加します。")
 
-# Fixed axes
-max_time = len(data) / orig_sr
-ax1.set_xlim(0, max_time)
-ax2.set_xlim(0, max_time)
-ax1.set_ylim(-1, 1)
-ax2.set_ylim(-1, 1)
-
-# Original waveform
-t_orig = np.linspace(0, max_time, num=len(data))
-ax1.plot(t_orig, data)
-ax1.set_title("Original Waveform")
-ax1.set_xlabel("Time (s)")
-ax1.set_ylabel("Amplitude")
-
-# Processed waveform
-proc_len = min(len(quantized), int(max_time * target_sr))
-t_proc = np.linspace(0, max_time, num=proc_len)
-ax2.plot(t_proc, quantized[:proc_len])
-ax2.set_title(f"Processed Waveform ({target_sr} Hz, {bit_depth}-bit)")
-ax2.set_xlabel("Time (s)")
-ax2.set_ylabel("Amplitude")
-
-# Zoom view (first 20 ms)
-zoom_duration = 0.02
-zoom_len = int(target_sr * zoom_duration)
-time_zoom = np.linspace(0, zoom_duration, num=zoom_len)
-zoom_resampled = data_rs[:zoom_len]
-zoom_quant = quantized[:zoom_len]
-ax3.plot(time_zoom, zoom_resampled, label="Resampled", linestyle='-')
-ax3.step(time_zoom, zoom_quant, where='mid', label="Quantized", linewidth=1.0)
-ax3.plot(time_zoom, zoom_quant, marker='o', linestyle='None', label="Quantized Samples")
-ax3.set_title("Zoomed Waveform (First 20 ms)")
-ax3.set_xlabel("Time (s)")
-ax3.set_ylabel("Amplitude")
-ax3.legend()
-
-st.pyplot(fig, use_container_width=False)
-
-# Write out WAV and play
-subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
-selected_subtype = subtype_map.get(bit_depth, 'PCM_16')
-with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
-    sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
-    st.audio(out.name, format="audio/wav")
+# 問2: RGBの2色混合
+st.write("**問2:** RGBのうち2色を混ぜると何色になりますか？ 例として、RとGを混ぜると何色が表示されるか答えてください。")
+with st.expander("解答・解説2"):
+    st.write("R(赤)とG(緑)を重ねると、加法混色により黄色(R+G)が表示されます。")
+    st.write("同様にG+ B → シアン、B+ R → マゼンタになります。")
