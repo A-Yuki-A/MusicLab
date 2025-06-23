@@ -14,11 +14,16 @@ import soundfile as sf
 AudioSegment.converter = "/usr/bin/ffmpeg"
 AudioSegment.ffprobe   = "/usr/bin/ffprobe"
 
+# ── ページ設定 ──
+st.set_page_config(
+    page_title="WaveForge",
+    layout="centered"
+)
+
 # ── 音声ロード関数 ──
 def load_mp3(uploaded_file):
     """
-    MP3を一時ファイル経由で読み込み、
-    正規化したNumPy配列とサンプリングレートを返す
+    MP3を一時ファイル経由で読み込み、正規化したNumPy配列とサンプリングレートを返す
     """
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
         tmp.write(uploaded_file.read())
@@ -31,14 +36,8 @@ def load_mp3(uploaded_file):
     data /= np.abs(data).max()
     return data, sr
 
-# ── ページ設定 ──
-st.set_page_config(
-    page_title="WaveForge",
-    layout="centered"
-)
-
 # ── アプリ本体 ──
-st.title("WaveForge")  # おすすめタイトル
+st.title("WaveForge")
 
 # ファイルアップロード
 df = st.file_uploader("MP3ファイルをアップロード", type="mp3")
@@ -52,31 +51,61 @@ duration = len(data) / orig_sr
 
 # ── 設定変更 ──
 st.write("### 設定変更")
-# 指示文
+st.markdown("**標本化周波数と量子化ビット数を変えて、音の違いを聴き比べしなさい。**")
+
+# 標本化周波数 ラベル＋説明
 st.markdown(
-    "**標本化周波数と量子化ビット数を変えて、音の違いを聴き比べしなさい。**"
-)
-# ラベルと説明を1行で表示（オレンジラベル＋黒説明）
-st.markdown(
-    "<span style='font-weight:bold; color:orange;'>標本化周波数 (Hz)：1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。</span>",
+    "<span style='font-weight:bold; color:orange;'>標本化周波数 (Hz)：</span>1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。",
     unsafe_allow_html=True
 )
-# スライダー
- target_sr = st.slider("", 1000, 48000, orig_sr, step=1000)
-# ラベルと説明を1行で表示（オレンジラベル＋黒説明）
+target_sr = st.slider("", 1000, 48000, orig_sr, step=1000)
+
+# 量子化ビット数 ラベル＋説明
 st.markdown(
-    "<span style='font-weight:bold; color:orange;'>量子化ビット数：各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。</span>",
+    "<span style='font-weight:bold; color:orange;'>量子化ビット数：</span>各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。",
     unsafe_allow_html=True
 )
-# スライダー
- bit_depth = st.slider("", 3, 24, 16, step=1){kb_size:,.2f}"
-)
-st.markdown(
-    f"MB＝{mb_size:,.2f}"
-)
-# チャンネル説明を追加
+bit_depth = st.slider("", 3, 24, 16, step=1)
+
+# ── 再サンプリングと量子化 ──
+rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
+max_int = 2**(bit_depth - 1) - 1
+quantized = np.round(rs_data * max_int) / max_int
+
+# ── 波形比較 ──
+st.write("### 波形比較")
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
+
+t_orig = np.linspace(0, duration, num=len(data))
+ax1.plot(t_orig, data)
+ax1.set(title="Original Waveform", xlabel="Time (s)", ylabel="Amplitude")
+ax1.set(xlim=(0, duration), ylim=(-1, 1))
+
+proc_len = min(len(quantized), int(duration * target_sr))
+t_proc = np.linspace(0, duration, num=proc_len)
+ax2.plot(t_proc, quantized[:proc_len])
+ax2.set(title=f"Processed Waveform ({target_sr:,} Hz, {bit_depth:,} ビット)", xlabel="Time (s)", ylabel="Amplitude")
+ax2.set(xlim=(0, duration), ylim=(-1, 1))
+
+st.pyplot(fig)
+
+# ── オーディオ再生 ──
+subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
+selected_subtype = subtype_map.get(bit_depth, 'PCM_16')
+with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
+    sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
+    st.audio(out.name, format="audio/wav")
+
+# ── データ量計算 ──
+st.write("### データ量計算")
+st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
+bytes_size = target_sr * bit_depth * 2 * duration / 8
+kb_size = bytes_size / 1024
+mb_size = kb_size / 1024
+st.markdown(f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト")
+st.markdown(f"KB＝{kb_size:,.2f}")
+st.markdown(f"MB＝{mb_size:,.2f}")
+
+# チャンネル説明
 st.write("- ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
 st.write("- モノラル(1ch): 1つの音声信号で再生します。音の定位は中央になります。")
-st.markdown(
-    f"MB＝{mb_size:,.2f}"
-)
