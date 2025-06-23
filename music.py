@@ -27,6 +27,9 @@ def load_mp3(uploaded_file):
     data /= np.abs(data).max()
     return data, sr
 
+# ── ページ設定 ──
+st.set_page_config(page_title="WaveForge")
+
 # ── アプリ本体 ──
 st.title("WaveForge")  # おすすめタイトル
 
@@ -43,73 +46,15 @@ duration = len(data) / orig_sr
 # ── 設定変更 ──
 st.write("### 設定変更")
 # 指示文
-st.markdown("**標本化周波数と量子化ビット数を変えて、音の違いを聴き比べしなさい。**")
-# ラベルと説明を1行で表示（オレンジラベル＋黒説明）
-st.markdown(
-    "<span style='font-weight:bold; color:orange;'>標本化周波数 (Hz)：</span>1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。",
-    unsafe_allow_html=True
-)
-# スライダー（ラベル無し）
-target_sr = st.slider("", 1000, 48000, orig_sr, step=1000)
-# ラベルと説明を1行で表示（オレンジラベル＋黒説明）
-st.markdown(
-    "<span style='font-weight:bold; color:orange;'>量子化ビット数：</span>各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。",
-    unsafe_allow_html=True
-)
-# スライダー（ラベル無し）
-bit_depth = st.slider("", 3, 24, 16, step=1)
-
-# ── 再サンプリングと量子化 ──
-rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
-max_int = 2**(bit_depth - 1) - 1
-quantized = np.round(rs_data * max_int) / max_int
-
-# ── 波形比較 ──
-st.write("### 波形比較")
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
-
-t_orig = np.linspace(0, duration, num=len(data))
-ax1.plot(t_orig, data)
-ax1.set_title("Original Waveform")
-ax1.set_xlabel("Time (s)")
-ax1.set_ylabel("Amplitude")
-ax1.set_xlim(0, duration)
-ax1.set_ylim(-1, 1)
-
-proc_len = min(len(quantized), int(duration * target_sr))
-t_proc = np.linspace(0, duration, num=proc_len)
-ax2.plot(t_proc, quantized[:proc_len])
-ax2.set_title(f"Processed Waveform ({target_sr:,} Hz, {bit_depth:,} ビット)")
-ax2.set_xlabel("Time (s)")
-ax2.set_ylabel("Amplitude")
-ax2.set_xlim(0, duration)
-ax2.set_ylim(-1, 1)
-st.pyplot(fig)
-
-# ── オーディオ再生 ──
-subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
-# 指定ビット数がマップ外の場合は16ビットを使う
-selected_subtype = subtype_map.get(bit_depth, 'PCM_16')
-with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
-    sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
-    st.audio(out.name, format="audio/wav")
-
-# ── データ量計算 ──
-st.write("### データ量計算")
-# 音のデータ量 求める公式を表示
-st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
-bytes_size = target_sr * bit_depth * 2 * duration / 8
-kb_size = bytes_size / 1024
-mb_size = kb_size / 1024
-st.markdown("**アップロードして設定を変更したファイルのデータ量**")
-# バイト数
-st.markdown(
-    f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト"
-)
-# KB/MB 表記を改行して表示
 st.markdown(
     f"KB＝{kb_size:,.2f}"
 )
+st.markdown(
+    f"MB＝{mb_size:,.2f}"
+)
+# チャンネル説明を追加
+st.write("- ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
+st.write("- モノラル(1ch): 1つの音声信号で再生します。音の定位は中央になります。")
 st.markdown(
     f"MB＝{mb_size:,.2f}"
 )
