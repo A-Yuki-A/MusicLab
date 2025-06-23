@@ -84,12 +84,8 @@ with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
     sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
     st.audio(out.name, format="audio/wav")
 
-# 問を追加（番号を削除）
-st.write("---")
-st.write("**標本化周波数を変えると音がどのように変化しますか？**")
-st.write("**量子化ビット数を変えると音がどのように変化しますか？**")
-st.write("---")
-
+# ── データ量計算 ──
+st.write("### データ量計算")
 # 音のデータ量 公式表示
 st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
 
