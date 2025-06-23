@@ -86,20 +86,16 @@ with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
 
 # ── データ量計算 ──
 st.write("### データ量計算")
-# 音のデータ量 公式表示
+# 音のデータ量タイトル
 st.markdown("**アップロードして設定を変更したファイルのデータ量**")
 # 計算式を改行して表示
-duration = len(data) / orig_sr
 bytes_size = target_sr * bit_depth * 2 * duration / 8
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
 bytes_str = f"{int(bytes_size):,}"
 kb_str = f"{kb_size:,.2f}"
 mb_str = f"{mb_size:,.2f}"
-st.markdown(
-    f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト  
-({kb_str} KB / {mb_str} MB)"
-)
+st.markdown(f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト\n({kb_str} KB / {mb_str} MB)")
 
 # チャンネル説明
 st.write("- ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
