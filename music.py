@@ -87,9 +87,8 @@ with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
 # ── データ量計算 ──
 st.write("### データ量計算")
 # 音のデータ量 公式表示
-st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
-
-# データ量の計算式表示
+st.markdown("**アップロードして設定を変更したファイルのデータ量**")
+# 計算式を改行して表示
 duration = len(data) / orig_sr
 bytes_size = target_sr * bit_depth * 2 * duration / 8
 kb_size = bytes_size / 1024
@@ -98,7 +97,8 @@ bytes_str = f"{int(bytes_size):,}"
 kb_str = f"{kb_size:,.2f}"
 mb_str = f"{mb_size:,.2f}"
 st.markdown(
-    f"**データ量 = {target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**"
+    f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト  
+({kb_str} KB / {mb_str} MB)"
 )
 
 # チャンネル説明
