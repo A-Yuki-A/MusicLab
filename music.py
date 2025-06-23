@@ -54,7 +54,22 @@ duration = len(data) / orig_sr
 st.write("### 設定変更")
 # 指示文
 st.markdown(
-    f"KB＝{kb_size:,.2f}"
+    "**標本化周波数と量子化ビット数を変えて、音の違いを聴き比べしなさい。**"
+)
+# ラベルと説明を1行で表示（オレンジラベル＋黒説明）
+st.markdown(
+    "<span style='font-weight:bold; color:orange;'>標本化周波数 (Hz)：1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。</span>",
+    unsafe_allow_html=True
+)
+# スライダー
+ target_sr = st.slider("", 1000, 48000, orig_sr, step=1000)
+# ラベルと説明を1行で表示（オレンジラベル＋黒説明）
+st.markdown(
+    "<span style='font-weight:bold; color:orange;'>量子化ビット数：各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。</span>",
+    unsafe_allow_html=True
+)
+# スライダー
+ bit_depth = st.slider("", 3, 24, 16, step=1){kb_size:,.2f}"
 )
 st.markdown(
     f"MB＝{mb_size:,.2f}"
