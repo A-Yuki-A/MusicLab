@@ -79,6 +79,7 @@ st.pyplot(fig)
 
 # ── オーディオ再生 ──
 subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
+selected_subtype = subtype_map[bit_depth]
 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
     sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
     st.audio(out.name, format="audio/wav")
