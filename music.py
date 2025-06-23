@@ -1,5 +1,9 @@
 import streamlit as st
-from pydub import AudioSegment
+try:
+    from pydub import AudioSegment
+except ModuleNotFoundError:
+    st.error("pydub モジュールがインストールされていません。requirements.txt に 'pydub' を追加してください。")
+    st.stop()
 import numpy as np
 import matplotlib.pyplot as plt
 import librosa
@@ -28,7 +32,10 @@ def load_mp3(uploaded_file):
     return data, sr
 
 # ── ページ設定 ──
-st.set_page_config(page_title="WaveForge")
+st.set_page_config(
+    page_title="WaveForge",
+    layout="centered"
+)
 
 # ── アプリ本体 ──
 st.title("WaveForge")  # おすすめタイトル
