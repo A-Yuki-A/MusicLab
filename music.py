@@ -62,7 +62,7 @@ st.markdown("<span style='font-weight:bold; color:orange;'>量子化ビット数
 st.markdown(
     "各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。"
 )
-bit_depth = st.slider("", 3, 24, 16, step=1)("", 3, 24, 16, step=1)
+bit_depth = st.slider("", 3, 24, 16, step=1)
 
 # ── 再サンプリングと量子化 ──
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
