@@ -90,6 +90,8 @@ with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
 
 # ── データ量計算 ──
 st.write("### データ量計算")
+# 音のデータ量 求める公式を表示
+st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
 bytes_size = target_sr * bit_depth * 2 * duration / 8
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
