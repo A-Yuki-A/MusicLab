@@ -51,7 +51,7 @@ st.write(":memo: 標本化周波数と量子化ビット数を変えて、音の
 st.markdown("<span style='font-weight:bold; color:orange;'>標本化周波数 (Hz)</span>", unsafe_allow_html=True)
 target_sr = st.slider("", 1000, 48000, orig_sr, step=1000)
 st.markdown("<span style='font-weight:bold; color:orange;'>量子化ビット数</span>", unsafe_allow_html=True)
-bit_depth = st.slider("", 3, 24, 16, step=1)("", 3, 24, 16, step=1)
+bit_depth = st.slider("量子化ビット数", 3, 24, 16, step=1)
 
 # ── 再サンプリングと量子化 ──
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
