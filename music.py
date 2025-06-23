@@ -28,7 +28,7 @@ def load_mp3(uploaded_file):
     return data, sr
 
 # ── アプリ本体 ──
-st.title("MP3 Resampler & Quantizer")
+st.title("WaveForge")  # おすすめタイトル
 
 # ファイルアップロード
 df = st.file_uploader("MP3ファイルをアップロード", type="mp3")
@@ -45,9 +45,11 @@ st.write("### 設定変更")
 st.write("**標本化周波数(サンプリング周波数)**: 1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。")
 st.write("**量子化ビット数**: 各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。")
 
-# スライダー設定を変更: 標本化周波数最低値1000, 量子化ビット数最低値3
-target_sr = st.slider("標本化周波数 (Hz)", 1000, 48000, orig_sr, step=1000)
-bit_depth = st.slider("量子化ビット数", 3, 24, 16, step=1)
+# 太文字かつオレンジカラーのラベルを追加
+st.markdown("<span style='font-weight:bold; color:orange;'>標本化周波数 (Hz)</span>", unsafe_allow_html=True)
+target_sr = st.slider("", 1000, 48000, orig_sr, step=1000)
+st.markdown("<span style='font-weight:bold; color:orange;'>量子化ビット数</span>", unsafe_allow_html=True)
+bit_depth = st.slider("", 3, 24, 16, step=1)
 
 # ── 再サンプリングと量子化 ──
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
@@ -90,11 +92,13 @@ bytes_size = target_sr * bit_depth * 2 * duration / 8
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
 st.markdown("**アップロードして設定を変更したファイルのデータ量**")
+# バイト数
 st.markdown(
     f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト"
 )
+# KB/MB 表記を KB=, MB=
 st.markdown(
-    f"({kb_size:,.2f} KB / {mb_size:,.2f} MB)"
+    f"KB＝{kb_size:,.2f}  MB＝{mb_size:,.2f}"
 )
 
 # チャンネル説明
