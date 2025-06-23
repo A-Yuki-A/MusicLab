@@ -6,43 +6,6 @@ import librosa
 import tempfile
 import soundfile as sf
 
-# ── ページ設定と淡いグレー基調スタイル ──
-st.set_page_config(
-    page_title="MP3 Resampler & Quantizer",
-    layout="centered"
-)
-st.markdown(
-    """
-    <style>
-    /* 背景を淡いグレーに設定 */
-    .stApp { background-color: #f5f5f5; }
-    /* セクション見出し */
-    h2, h3, h4 {
-        color: #333333;
-        border-bottom: 1px solid #dddddd;
-        padding-bottom: 4px;
-    }
-    /* スライダーやボタン */
-    .stSlider > div { background-color: #e0e0e0; }
-    /* マークダウンテキスト */
-    .markdown-text-container p { color: #444444; }
-    /* 波形図・オーディオ */
-    .stPlotlyChart, .stAudio {
-        background: #fff;
-        padding: 10px;
-        border-radius: 8px;
-        box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-    /* データ量セクション */
-    .stMarkdown {
-        background: #fff;
-        padding: 8px;
-        border-left: 4px solid #ccc;
-    }
-    </style>
-    """, unsafe_allow_html=True
-)
-
 # ── ffmpeg/ffprobe のパス指定 ──
 AudioSegment.converter = "/usr/bin/ffmpeg"
 AudioSegment.ffprobe   = "/usr/bin/ffprobe"
@@ -73,16 +36,17 @@ if not df:
     st.info("MP3ファイルをアップロードしてください。")
     st.stop()
 
+# 音声読み込み
 data, orig_sr = load_mp3(df)
 duration = len(data) / orig_sr
 
 # ── 設定変更 ──
 st.write("### 設定変更")
-st.write("**標本化周波数**: 1秒間に何回の標本点として音を取り込むか。高いほど細かい再現。")
-st.write("**量子化ビット数**: 各標本点の電圧を何段階にするか。多いほど滑らか。")
+st.write("**標本化周波数(サンプリング周波数)**: 1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。")
+st.write("**量子化ビット数**: 各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。")
 
-target_sr = st.slider("標本化周波数 (Hz)", 100, 48000, orig_sr, step=1000)
-bit_depth = st.slider("量子化ビット数", 3, 24, 16, step=1)
+target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000)
+bit_depth = st.slider("量子化ビット数", 8, 24, 16, step=1)
 
 # ── 再サンプリングと量子化 ──
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
@@ -92,38 +56,46 @@ quantized = np.round(rs_data * max_int) / max_int
 # ── 波形比較 ──
 st.write("### 波形比較")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
-ax1.plot(np.linspace(0, duration, len(data)), data)
-ax1.set(title="Original Waveform", xlabel="Time (s)", ylabel="Amplitude")
-ax1.set(xlim=(0, duration), ylim=(-1, 1))
+
+# 元波形描画
+t_orig = np.linspace(0, duration, num=len(data))
+ax1.plot(t_orig, data)
+ax1.set_title("Original Waveform")
+ax1.set_xlabel("Time (s)")
+ax1.set_ylabel("Amplitude")
+ax1.set_xlim(0, duration)
+ax1.set_ylim(-1, 1)
+
+# 処理後波形描画
 proc_len = min(len(quantized), int(duration * target_sr))
-ax2.plot(np.linspace(0, duration, proc_len), quantized[:proc_len])
-ax2.set(title=f"Processed ({target_sr:,}Hz, {bit_depth:,}bit)", xlabel="Time (s)", ylabel="Amplitude")
-ax2.set(xlim=(0, duration), ylim=(-1, 1))
-st.pyplot(fig, use_container_width=False)
+t_proc = np.linspace(0, duration, num=proc_len)
+ax2.plot(t_proc, quantized[:proc_len])
+ax2.set_title(f"Processed Waveform ({target_sr:,} Hz, {bit_depth:,} ビット)")
+ax2.set_xlabel("Time (s)")
+ax2.set_ylabel("Amplitude")
+ax2.set_xlim(0, duration)
+ax2.set_ylim(-1, 1)
+st.pyplot(fig)
 
 # ── オーディオ再生 ──
-subtype_map = {8:'PCM_U8',16:'PCM_16',24:'PCM_24'}
+subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
-    sf.write(out.name, quantized, target_sr, subtype_map[bit_depth])
-    st.audio(out.name)
+    sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
+    st.audio(out.name, format="audio/wav")
 
 # ── データ量計算 ──
 st.write("### データ量計算")
-# 計算用変数定義
 bytes_size = target_sr * bit_depth * 2 * duration / 8
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
-# 表示
 st.markdown("**アップロードして設定を変更したファイルのデータ量**")
-# 一行目：バイト数
 st.markdown(
-    f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f}秒 ÷ 8 = {int(bytes_size):,} バイト"
+    f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト"
 )
-# 二行目：KB / MB
 st.markdown(
     f"({kb_size:,.2f} KB / {mb_size:,.2f} MB)"
 )
 
 # チャンネル説明
-st.write("- ステレオ(2ch): 左右2つの音を同時再生。広がりあり。")
-st.write("- モノラル(1ch): 1つの音を再生。中央定位。")
+st.write("- ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
+st.write("- モノラル(1ch): 1つの音声信号で再生します。音の定位は中央になります。")
