@@ -41,12 +41,16 @@ data, orig_sr = load_mp3(df)
 duration = len(data) / orig_sr
 
 # ── 設定変更 ──
+st.markdown(
+    "<div style='background-color:#f0f0f0; padding:10px; border-radius:5px;'>",
+    unsafe_allow_html=True
+)
 st.write("### 設定変更")
 st.write("**標本化周波数(サンプリング周波数)**: 1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。")
 st.write("**量子化ビット数**: 各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。")
-
 target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000)
 bit_depth = st.slider("量子化ビット数", 8, 24, 16, step=1)
+st.markdown("</div>", unsafe_allow_html=True)
 
 # ── 再サンプリングと量子化 ──
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
@@ -54,9 +58,12 @@ max_int = 2**(bit_depth - 1) - 1
 quantized = np.round(rs_data * max_int) / max_int
 
 # ── 波形比較 ──
+st.markdown(
+    "<div style='background-color:#f0f0f0; padding:10px; border-radius:5px;'>",
+    unsafe_allow_html=True
+)
 st.write("### 波形比較")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
-
 # 元波形描画
 t_orig = np.linspace(0, duration, num=len(data))
 ax1.plot(t_orig, data)
@@ -65,7 +72,6 @@ ax1.set_xlabel("Time (s)")
 ax1.set_ylabel("Amplitude")
 ax1.set_xlim(0, duration)
 ax1.set_ylim(-1, 1)
-
 # 処理後波形描画
 proc_len = min(len(quantized), int(duration * target_sr))
 t_proc = np.linspace(0, duration, num=proc_len)
@@ -76,6 +82,7 @@ ax2.set_ylabel("Amplitude")
 ax2.set_xlim(0, duration)
 ax2.set_ylim(-1, 1)
 st.pyplot(fig)
+st.markdown("</div>", unsafe_allow_html=True)
 
 # ── オーディオ再生 ──
 subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
@@ -85,10 +92,16 @@ with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
     st.audio(out.name, format="audio/wav")
 
 # ── データ量計算 ──
+st.markdown(
+    "<div style='background-color:#f0f0f0; padding:10px; border-radius:5px;'>",
+    unsafe_allow_html=True
+)
 st.write("### データ量計算")
+# 計算用変数定義
 bytes_size = target_sr * bit_depth * 2 * duration / 8
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
+# 表示
 st.markdown("**アップロードして設定を変更したファイルのデータ量**")
 st.markdown(
     f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト"
@@ -96,6 +109,7 @@ st.markdown(
 st.markdown(
     f"({kb_size:,.2f} KB / {mb_size:,.2f} MB)"
 )
+st.markdown("</div>", unsafe_allow_html=True)
 
 # チャンネル説明
 st.write("- ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
