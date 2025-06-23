@@ -37,8 +37,13 @@ if not df:
 # 音声読み込み
 data, orig_sr = load_mp3(df)
 
-# 設定変更
+# ── 設定変更 ──
 st.write("### 設定変更")
+# 説明文を追加
+st.write("**標本化周波数(サンプリング周波数)**: 1秒間に何回音の大きさを取り込むかを示します。高いほど細かい音を再現できます。")
+st.write("**量子化ビット数**: 各サンプルを何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。")
+
+# スライダー
 target_sr = st.slider("標本化周波数 (Hz)", 8000, 48000, orig_sr, step=1000)
 bit_depth = st.slider("量子化ビット数", 8, 24, 16, step=1)
 
@@ -51,21 +56,18 @@ quantized = np.round(rs_data * max_int) / max_int
 st.write("### 波形比較")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
 
-# 軸を固定: 時間0〜再生時間、振幅-1〜1
 duration = len(data) / orig_sr
 ax1.set_xlim(0, duration)
 ax2.set_xlim(0, duration)
 ax1.set_ylim(-1, 1)
 ax2.set_ylim(-1, 1)
 
-# 元波形
 t_orig = np.linspace(0, duration, num=len(data))
-ax1.plot(t_orig := np.linspace(0, duration, num=len(data)), data)
+ax1.plot(t_orig, data)
 ax1.set_title("Original Waveform")
 ax1.set_xlabel("Time (s)")
 ax1.set_ylabel("Amplitude")
 
-# 処理後波形
 proc_len = min(len(quantized), int(duration * target_sr))
 t_proc = np.linspace(0, duration, num=proc_len)
 ax2.plot(t_proc, quantized[:proc_len])
@@ -82,30 +84,25 @@ with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
     sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
     st.audio(out.name, format="audio/wav")
 
-# 問を追加
+# 問を追加（番号を削除）
 st.write("---")
-st.write("**問1: 標本化周波数を変えると音がどのように変化しますか？**")
-st.write("**問2: 量子化ビット数を変えると音がどのように変化しますか？**")
+st.write("**標本化周波数を変えると音がどのように変化しますか？**")
+st.write("**量子化ビット数を変えると音がどのように変化しますか？**")
 st.write("---")
 
 # 音のデータ量 公式表示
 st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
 
-# データ量の計算式表示（固定）
-# (音源はステレオ(2ch)とする)
-# 標本化周波数 × 量子化ビット数 × チャンネル数(2) × 再生時間 ÷ 8 をバイト、KB、MBで表示
-
-duration = len(data) / orig_sr  # 再生時間(秒)
-bytes_size = target_sr * bit_depth * 2 * duration / 8  # 2ch分を考慮
+# データ量の計算式表示
+duration = len(data) / orig_sr
+bytes_size = target_sr * bit_depth * 2 * duration / 8
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
-# 3桁区切りでフォーマット
 bytes_str = f"{int(bytes_size):,}"
 kb_str = f"{kb_size:,.2f}"
 mb_str = f"{mb_size:,.2f}"
-# 太文字で表示
 st.markdown(
-    f"**データ量=: {target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**"
+    f"**データ量 = {target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {bytes_str} バイト ({kb_str} KB / {mb_str} MB)**"
 )
 
 # チャンネル説明
