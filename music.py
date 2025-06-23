@@ -9,7 +9,7 @@ import soundfile as sf
 # ── ページ設定と淡いグレー基調スタイル ──
 st.set_page_config(
     page_title="MP3 Resampler & Quantizer",
-    layout="wide"
+    layout="centered"
 )
 st.markdown(
     """
