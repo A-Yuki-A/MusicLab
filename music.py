@@ -96,11 +96,10 @@ st.markdown("**アップロードして設定を変更したファイルのデ�
 st.markdown(
     f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト"
 )
-# KB/MB 表記を KB=, MB=
+# KB/MB 表記を改行して表示
 st.markdown(
-    f"KB＝{kb_size:,.2f}  MB＝{mb_size:,.2f}"
+    f"KB＝{kb_size:,.2f}"
 )
-
-# チャンネル説明
-st.write("- ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
-st.write("- モノラル(1ch): 1つの音声信号で再生します。音の定位は中央になります。  ")
+st.markdown(
+    f"MB＝{mb_size:,.2f}"
+)
