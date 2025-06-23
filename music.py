@@ -52,9 +52,17 @@ st.write("**量子化ビット数**: 各標本点の電圧を何段階に分け�
 # スライダー
 # 太字オレンジ表示のラベルのみを残し、スライダー自体のラベルは空文字に
 st.markdown("<span style='font-weight:bold; color:orange;'>標本化周波数 (Hz)</span>", unsafe_allow_html=True)
+# 説明文（黒）
+st.markdown(
+    "1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。"
+)
 target_sr = st.slider("", 1000, 48000, orig_sr, step=1000)
 st.markdown("<span style='font-weight:bold; color:orange;'>量子化ビット数</span>", unsafe_allow_html=True)
-bit_depth = st.slider("", 3, 24, 16, step=1)
+# 説明文（黒）
+st.markdown(
+    "各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。"
+)
+bit_depth = st.slider("", 3, 24, 16, step=1)("", 3, 24, 16, step=1)
 
 # ── 再サンプリングと量子化 ──
 rs_data = librosa.resample(data, orig_sr=orig_sr, target_sr=target_sr)
