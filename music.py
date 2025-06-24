@@ -99,12 +99,17 @@ with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
 # ── データ量計算 ──
 st.write("### データ量計算")
 st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
-bytes_size = target_sr * bit_depth * 2 * duration / 8
-kb_size = bytes_size / 1024
-mb_size = kb_size / 1024
-st.markdown(f"{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト")
-st.markdown(f"KB＝{kb_size:,.2f}")
-st.markdown(f"MB＝{mb_size:,.2f}")
+# 追加: 設定後のデータ量表示
+st.markdown("**設定を変更したファイルのデータ量＝**")
+# 読みやすく行間を狭めた例
+example = f"""
+<div style='line-height:1.2;'>
+{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト<br>
+KB＝{kb_size:,.2f}<br>
+MB＝{mb_size:,.2f}
+</div>
+"""
+st.markdown(example, unsafe_allow_html=True)
 
 # チャンネル説明
 st.write("- ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
