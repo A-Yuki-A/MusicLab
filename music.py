@@ -120,7 +120,7 @@ st.markdown(example, unsafe_allow_html=True)
 
 # チャンネル説明（行間を少し狭める）
 channel_desc = """
-<div style='line-height:1.2; margin-top:10px;'>
+<div style='line-height:1.5; margin-top:10px;'>
 - ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。<br>
 - モノラル(1ch): 1つの音声信号で再生します。音の定位は中央になります。
 </div>
