@@ -40,13 +40,13 @@ def load_mp3(uploaded_file):
 st.title("WaveForge")
 
 # ファイルアップロード
-df = st.file_uploader("MP3ファイルをアップロード", type="mp3")
-if not df:
+uploaded_file = st.file_uploader("MP3ファイルをアップロード", type="mp3")
+if not uploaded_file:
     st.info("MP3ファイルをアップロードしてください。")
     st.stop()
 
 # 音声読み込み
-data, orig_sr = load_mp3(df)
+data, orig_sr = load_mp3(uploaded_file)
 duration = len(data) / orig_sr
 
 # ── 設定変更 ──
@@ -99,9 +99,16 @@ with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
 # ── データ量計算 ──
 st.write("### データ量計算")
 st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
-# 追加: 設定後のデータ量表示
+
+# 設定を変更したファイルのデータ量表示
 st.markdown("**設定を変更したファイルのデータ量＝**")
-# 読みやすく行間を狭めた例
+
+# データ量計算
+bytes_size = target_sr * bit_depth * 2 * duration / 8
+kb_size = bytes_size / 1024
+mb_size = kb_size / 1024
+
+# 読みやすく行間を狭めた表示
 example = f"""
 <div style='line-height:1.2;'>
 {target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト<br>
