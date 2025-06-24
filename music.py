@@ -108,19 +108,21 @@ bytes_size = target_sr * bit_depth * 2 * duration / 8
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
 
-# 計算過程を示す表示
+# 計算過程を示す表示（各行間を少し広げる）
 example = f"""
-<div style='line-height:1.2;'>
-{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト<br>
-{int(bytes_size):,} バイト ÷ 1024 = {kb_size:,.2f} KB<br>
+<div style='line-height:1.5;'>
+{target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト<br><br>
+{int(bytes_size):,} バイト ÷ 1024 = {kb_size:,.2f} KB<br><br>
 {kb_size:,.2f} KB ÷ 1024 = {mb_size:,.2f} MB
 </div>
 """
 st.markdown(example, unsafe_allow_html=True)
 
-# スペースを入れる
-st.write(" ")
-
-# チャンネル説明
-st.write("- ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。")
-st.write("- モノラル(1ch): 1つの音声信号で再生します。音の定位は中央になります。")
+# チャンネル説明（行間を狭める）
+channel_desc = """
+<div style='line-height:1.1; margin-top:10px;'>
+- ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。<br>
+- モノラル(1ch): 1つの音声信号で再生します。音の定位は中央になります。
+</div>
+"""
+st.markdown(channel_desc, unsafe_allow_html=True)
