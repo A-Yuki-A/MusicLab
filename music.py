@@ -58,7 +58,8 @@ st.markdown(
     "<span style='font-weight:bold; color:orange;'>標本化周波数 (Hz)：</span>1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。",
     unsafe_allow_html=True
 )
-target_sr = st.slider("", 1000, 48000, orig_sr, step=1000)
+# 標本化周波数の下限を4000Hzに設定
+target_sr = st.slider("", 4000, 48000, orig_sr if orig_sr >= 4000 else 44100, step=1000)
 
 # 量子化ビット数 ラベル＋説明
 st.markdown(
@@ -90,25 +91,26 @@ ax2.set(xlim=(0, duration), ylim=(-1, 1))
 st.pyplot(fig)
 
 # ── オーディオ再生 ──
+st.write("### 再生")
 subtype_map = {8: 'PCM_U8', 16: 'PCM_16', 24: 'PCM_24'}
 selected_subtype = subtype_map.get(bit_depth, 'PCM_16')
-with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
-    sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
-    st.audio(out.name, format="audio/wav")
+
+if np.all(quantized == 0):
+    st.warning(f"{target_sr} Hz にリサンプリングした結果、無音になってしまいました。標本化周波数を少し上げてください。")
+else:
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
+        sf.write(out.name, quantized, target_sr, subtype=selected_subtype)
+        st.audio(out.name, format="audio/wav")
 
 # ── データ量計算 ──
 st.write("### データ量計算")
 st.markdown("**音のデータ量 = 標本化周波数 (Hz) × 量子化ビット数 (bit) × 時間 (s) × チャンネル数 (ch)**")
-
-# 設定を変更したファイルのデータ量表示
 st.markdown("**設定を変更したファイルのデータ量＝**")
 
-# データ量計算
 bytes_size = target_sr * bit_depth * 2 * duration / 8
 kb_size = bytes_size / 1024
 mb_size = kb_size / 1024
 
-# 計算過程を示す表示（各行間を少し広げる）
 example = f"""
 <div style='line-height:1.2;'>
 {target_sr:,} Hz × {bit_depth:,} bit × 2 ch × {duration:.2f} 秒 ÷ 8 = {int(bytes_size):,} バイト<br>
@@ -118,7 +120,6 @@ example = f"""
 """
 st.markdown(example, unsafe_allow_html=True)
 
-# チャンネル説明（行間を少し狭める）
 channel_desc = """
 <div style='line-height:1.5; margin-top:20px;'>
 - ステレオ(2ch): 左右2つの音声信号を同時に再生します。音に広がりがあります。<br>
