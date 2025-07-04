@@ -55,7 +55,7 @@ st.markdown("**標本化周波数と量子化ビット数を変えて、音の�
 
 # 標本化周波数 ラベル＋説明
 st.markdown(
-    "<span style='font-weight:bold; color:orange;'>標本化周波数 (Hz)：</span>1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。",
+    "<span style='font-weight:bold; color:orange;'>標本化周波数 (Hz)：</span>1秒間に何回の標本点として音の大きさを取り込むかを示します。高いほど細かい音を再現できます。通常音源の標本化周波数は44.1kHz",
     unsafe_allow_html=True
 )
 # 標本化周波数の下限を4000Hzに設定
@@ -63,7 +63,7 @@ target_sr = st.slider("", 4000, 48000, orig_sr if orig_sr >= 4000 else 44100, st
 
 # 量子化ビット数 ラベル＋説明
 st.markdown(
-    "<span style='font-weight:bold; color:orange;'>量子化ビット数：</span>各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。",
+    "<span style='font-weight:bold; color:orange;'>量子化ビット数：</span>各標本点の電圧を何段階に分けて記録するかを示します。ビット数が多いほど音の強弱を滑らかに表現できます。通常音源の量子化ビット数は16bit",
     unsafe_allow_html=True
 )
 bit_depth = st.slider("", 3, 24, 16, step=1)
