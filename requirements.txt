@@ -2,3 +2,4 @@ streamlit
 pydub
 librosa
 matplotlib
+pydub
