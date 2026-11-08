@@ -1,8 +1,9 @@
 import streamlit as st
 try:
     from pydub import AudioSegment
-except ModuleNotFoundError:
-    st.error("pydub モジュールがインストールされていません。requirements.txt に 'pydub' を追加してください。")
+except ImportError as e:
+    st.error(f"pydubの読み込みに失敗しました：{e}")
+    st.exception(e)
     st.stop()
 import numpy as np
 import matplotlib.pyplot as plt
